@@ -47,31 +47,67 @@ export interface BirthRow {
   sitelinks: number;
 }
 
+/** 何年生まれまでさかのぼって探すか（これより前の人物は対象外） */
+const FIRST_YEAR = 1;
+/** 1 回の問い合わせに入れる年数 */
+const YEARS_PER_QUERY = 300;
+
+function isLeapYear(y: number) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+/** その月日の、各年の日付リテラル（"1987-10-29T00:00:00Z"^^xsd:dateTime） */
+export function birthDateLiterals(month: number, day: number, lastYear: number): string[] {
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  const out: string[] = [];
+  for (let y = FIRST_YEAR; y <= lastYear; y++) {
+    if (month === 2 && day === 29 && !isLeapYear(y)) continue;
+    out.push(`"${String(y).padStart(4, "0")}-${mm}-${dd}T00:00:00Z"^^xsd:dateTime`);
+  }
+  return out;
+}
+
 /**
  * 日本語版 Wikipedia に記事があり、生年月日（日まで分かるもの）が month/day の人物。
  *
+ * 「全員の誕生日を調べて月日で絞る」と重すぎてクエリサービスが時間切れになるので、
+ * 「1年10月29日、2年10月29日、…、今年の10月29日」という日付そのもので引く
+ * （日付の値には索引があるので速い）。
+ *
  * 誕生日の採用方針:
  * - 生年月日の文が複数あるときは「最良ランク」（推奨ランクがあればそれ、なければ通常ランク）だけを見る
- * - そのうち精度が「日」のものだけを使う（年や月までしか分からない日付は使わない）
+ * - そのうち精度が「日」のものだけを使う（年や月までしか分からない日付は、1月1日などに
+ *   丸めて記録されているが、それは使わない）
  * - ユリウス暦で記録された日付は、クエリサービスがグレゴリオ暦に換算した値で判定する
  * - 最良ランクの日付が複数あり、そのどれかが一致すれば対象にする
  */
-export async function findPeopleBornOn(month: number, day: number): Promise<{ rows: BirthRow[]; total: number }> {
-  const rows = await sparql(`
+export async function findPeopleBornOn(
+  month: number,
+  day: number,
+  now = new Date(),
+): Promise<{ rows: BirthRow[]; total: number }> {
+  const rows: Record<string, string>[] = [];
+  for (const part of chunk(birthDateLiterals(month, day, now.getUTCFullYear()), YEARS_PER_QUERY)) {
+    rows.push(
+      ...(await sparql(`
 SELECT ?person ?dob ?cal ?jaTitle ?sitelinks WHERE {
-  ?article schema:isPartOf <https://ja.wikipedia.org/> ;
-           schema:about ?person ;
-           schema:name ?jaTitle .
+  VALUES ?dob { ${part.join(" ")} }
+  ?person wdt:P569 ?dob .
   ?person wdt:P31 wd:Q5 ;
           p:P569 ?st ;
           wikibase:sitelinks ?sitelinks .
   ?st a wikibase:BestRank ;
       psv:P569 ?v .
-  ?v wikibase:timePrecision 11 ;
-     wikibase:timeValue ?dob ;
+  ?v wikibase:timeValue ?dob ;
+     wikibase:timePrecision 11 ;
      wikibase:timeCalendarModel ?cal .
-  FILTER(MONTH(?dob) = ${month} && DAY(?dob) = ${day})
-}`);
+  ?article schema:about ?person ;
+           schema:isPartOf <https://ja.wikipedia.org/> ;
+           schema:name ?jaTitle .
+}`)),
+    );
+  }
   const byId = new Map<string, BirthRow>();
   for (const r of rows) {
     const id = qid(r.person);

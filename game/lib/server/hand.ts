@@ -20,7 +20,7 @@ export function jaWikipediaUrl(title: string) {
 
 export async function buildHand(month: number, day: number, now = new Date()): Promise<Hand> {
   const period = scorePeriod(now);
-  const { rows, total } = await findPeopleBornOn(month, day);
+  const { rows, total } = await findPeopleBornOn(month, day, now);
   const ids = rows.map((r) => r.id);
   const details = await getPersonDetails(ids, new Map(rows.map((r) => [r.id, r.jaTitle])));
   const occupationIds = [...new Set([...details.values()].flatMap((d) => d.occupations))];

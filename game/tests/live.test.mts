@@ -12,6 +12,7 @@ const { fetchViews } = await import("../lib/server/pageviews");
 const { toPersonImage } = await import("../lib/server/images");
 const { getHand, retryFailedScores } = await import("../lib/server/hand");
 const { clearMemoryCache } = await import("../lib/server/cache");
+const { birthDateLiterals } = await import("../lib/server/wikidata");
 
 type Handler = (url: URL, body: string) => Response | Promise<Response>;
 const realFetch = globalThis.fetch;
@@ -70,6 +71,38 @@ describe("閲覧数", () => {
     mockFetch(() => json({}, 500));
     const failed = await fetchViews("だれか", period);
     assert.equal(failed.status, "failed");
+  });
+});
+
+describe("途中で切れた応答", () => {
+  it("JSON が壊れていたら、分かるエラーにする（1 回は再試行する）", async () => {
+    const { fetchJson } = await import("../lib/server/http");
+    let count = 0;
+    mockFetch(() => {
+      count++;
+      return new Response('{"head":{"vars":["person"]},"results":{"bindings":[{"person":', { status: 200 });
+    });
+    await assert.rejects(fetchJson("https://query.wikidata.org/sparql", { timeoutMs: 1000 }), /途中で切れました/);
+    assert.equal(count, 2);
+  });
+  it("時間切れの印があれば時間切れとして扱う", async () => {
+    const { fetchJson, TimeoutError } = await import("../lib/server/http");
+    mockFetch(() => new Response('{"results":{"bindings":[ java.util.concurrent.TimeoutException', { status: 200 }));
+    await assert.rejects(fetchJson("https://query.wikidata.org/sparql", { timeoutMs: 1000, retries: 0 }), TimeoutError);
+  });
+});
+
+describe("誕生日の日付リテラル", () => {
+  it("1 年から今年まで、4 桁にそろえて作る", () => {
+    const list = birthDateLiterals(10, 29, 2026);
+    assert.equal(list.length, 2026);
+    assert.equal(list[0], '"0001-10-29T00:00:00Z"^^xsd:dateTime');
+    assert.equal(list.at(-1), '"2026-10-29T00:00:00Z"^^xsd:dateTime');
+  });
+  it("2月29日はうるう年だけ", () => {
+    const list = birthDateLiterals(2, 29, 2026);
+    assert.ok(list.includes('"2024-02-29T00:00:00Z"^^xsd:dateTime'));
+    assert.ok(!list.some((l) => l.startsWith('"2023-')));
   });
 });
 
@@ -177,7 +210,12 @@ describe("手札の組み立て（モック）", () => {
   it("人物・分類・画像・スコアがそろい、取得失敗は再試行で埋まる", async () => {
     const hand = await getHand(2, 29, NOW);
     assert.equal(hand.mode, "live");
-    assert.match(dayQueries[0], /MONTH\(\?dob\) = 2 && DAY\(\?dob\) = 29/);
+    // 年ごとの 2月29日 で引く（うるう年だけ）
+    const all = dayQueries.join("\n");
+    assert.ok(all.includes('"1992-02-29T00:00:00Z"^^xsd:dateTime'));
+    assert.ok(!all.includes("1991-02-29"));
+    assert.ok(!all.includes("1900-02-29")); // 100 で割り切れて 400 で割り切れない年はうるう年ではない
+    assert.ok(all.includes("2000-02-29"));
     assert.deepEqual(hand.period, { start: "2025-10", end: "2026-09" });
     assert.equal(hand.people.length, 3); // Q1 の誕生日 2 つは 1 人にまとめる
 
@@ -210,6 +248,7 @@ describe("手札の組み立て（モック）", () => {
   it("同時に開いても取得は 1 回", async () => {
     const [a, b] = await Promise.all([getHand(3, 1, NOW), getHand(3, 1, NOW)]);
     assert.equal(a, b);
-    assert.equal(dayQueries.length, 1);
+    const queriesPerHand = Math.ceil(birthDateLiterals(3, 1, NOW.getUTCFullYear()).length / 300);
+    assert.equal(dayQueries.length, queriesPerHand);
   });
 });
