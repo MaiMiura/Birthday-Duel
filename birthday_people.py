@@ -5,10 +5,11 @@
     python3 birthday_people.py 10-29 歌手
     python3 birthday_people.py 3/14 Q33999 --limit 10
     python3 birthday_people.py 12-25 actor --json
+    python3 birthday_people.py 10-29 歌手 --sort sitelinks
 
 並び順（--sort）:
-    ja        日本語版 Wikipedia に記事がある人を先に、その中は記事のある言語数順（既定）
-    views     日本語版 Wikipedia の直近 30 日の閲覧数順（記事がある人だけ）
+    views     日本語版 Wikipedia の直近 30 日の閲覧数順（記事がある人だけ。既定）
+    ja        日本語版 Wikipedia に記事がある人を先に、その中は記事のある言語数順
     sitelinks 記事のある言語数順（世界的な知名度）
 標準ライブラリだけで動く。
 """
@@ -48,7 +49,7 @@ def occupation_clause(occupation):
     return f"VALUES ?occName {{ {label}@ja {label}@en }}\n  ?occ rdfs:label ?occName ."
 
 
-def build_query(month, day, occupation, limit, lang, sort="ja"):
+def build_query(month, day, occupation, limit, lang, sort="views"):
     ja_article = """?jaArticle schema:about ?person ;
              schema:isPartOf <https://ja.wikipedia.org/> ;
              schema:name ?jaTitle ."""
@@ -154,8 +155,8 @@ def main(argv=None):
     ap.add_argument("birthday", help="誕生日（例: 10-29, 3/14, 12月25日）")
     ap.add_argument("occupation", help="職業。日本語・英語の名前（歌手, actor）か Q-ID（Q33999）")
     ap.add_argument("-n", "--limit", type=int, default=20, help="最大件数（既定 20）")
-    ap.add_argument("--sort", choices=["ja", "views", "sitelinks"], default="ja",
-                    help="並び順。ja=日本語版に記事がある人を優先（既定）, views=日本語版の閲覧数順, "
+    ap.add_argument("--sort", choices=["views", "ja", "sitelinks"], default="views",
+                    help="並び順。views=日本語版の閲覧数順（既定）, ja=日本語版に記事がある人を優先, "
                          "sitelinks=記事のある言語数順")
     ap.add_argument("--candidates", type=int, default=100,
                     help="--sort views のとき閲覧数を調べる候補の人数（既定 100）")
