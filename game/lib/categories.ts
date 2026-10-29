@@ -65,7 +65,7 @@ export const CATEGORIES: CategoryRule[] = [
     roots: [
       "Q2066131", // athlete
       "Q13474373", // professional wrestler
-      "Q628099", // association football manager
+      "Q628099", // association football coach
     ],
     exclude: [],
   },
