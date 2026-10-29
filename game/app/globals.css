@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "BIZ UDPGothic",
+  /* 丸ゴシック（iPhone・Mac）。ない端末では普通のゴシック体になる */
+  --font-sans: "Hiragino Maru Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", "Noto Sans JP",
     "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   /* 夜のバーのような暗い配色。文字は白に近い色で、暗い店内でも読みやすくする */
   --color-bg: #0f0d14;
