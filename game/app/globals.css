@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Hiragino Maru Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", "Noto Sans JP",
+    "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --color-paper: #fffaf2;
+  --color-ink: #2b2118;
+  --color-ink-soft: #6b5a4a;
+  --color-brand: #e8590c;
+  --color-brand-dark: #b8460a;
+  --color-card-back: #3b2a7a;
+
+  --color-cat-entertainment: #d6336c;
+  --color-cat-music: #7048e8;
+  --color-cat-sports: #1c7ed6;
+  --color-cat-knowledge: #c27c0e;
+  --color-cat-history: #2f9e44;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* カードの裏面の模様 */
+.card-back-pattern {
+  background-color: var(--color-card-back);
+  background-image:
+    radial-gradient(circle at 25% 25%, rgb(255 255 255 / 0.14) 0 10%, transparent 11%),
+    radial-gradient(circle at 75% 75%, rgb(255 255 255 / 0.14) 0 10%, transparent 11%);
+  background-size: 48px 48px;
+}
+
+/* 裏面 → 表面のめくり演出 */
+.flip-scene {
+  perspective: 1200px;
+}
+.flip-card {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.flip-card.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-face-front {
+  transform: rotateY(180deg);
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.pop-in {
+  animation: pop-in 0.35s ease-out 0.55s both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.sheet-up {
+  animation: sheet-up 0.2s ease-out;
+}
+
+/* アニメーションを減らす（端末の設定、またはアプリの設定） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+}

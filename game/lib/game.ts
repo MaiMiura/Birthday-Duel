@@ -1,0 +1,77 @@
+// 画面に依存しないゲームのルール（どのカードが勝負に使えるか、スコアの表示など）。
+
+import type { CategoryId, Hand, Person, SelectedCard } from "./types";
+
+export type CardState =
+  | { playable: true }
+  | { playable: false; label: string; detail: string };
+
+export function cardState(person: Person, category: CategoryId | "all"): CardState {
+  const s = person.score;
+  if (s.status === "no-article") {
+    return { playable: false, label: "スコア対象外", detail: "日本語版 Wikipedia の記事がないため、勝負には使えません。" };
+  }
+  if (person.categories.length === 0) {
+    return { playable: false, label: "部門なし", detail: "どのカテゴリーにも入らないため、勝負には使えません。" };
+  }
+  if (s.status === "failed") {
+    return { playable: false, label: "スコア未取得", detail: "閲覧数を取得できなかったため、今は勝負に使えません。再試行してください。" };
+  }
+  if (s.status !== "ok") {
+    return { playable: false, label: "スコア未取得", detail: "閲覧数を取得していないため、勝負には使えません。" };
+  }
+  if (category !== "all" && !person.categories.includes(category)) {
+    return { playable: false, label: "別のカテゴリー", detail: "このカテゴリーの勝負には使えません。" };
+  }
+  return { playable: true };
+}
+
+export interface VisibleOptions {
+  kidsFilter: boolean;
+  hiddenIds: string[];
+}
+
+export function visiblePeople(hand: Hand, category: CategoryId | "all", opts: VisibleOptions): Person[] {
+  const hidden = new Set(opts.hiddenIds);
+  return hand.people.filter(
+    (p) =>
+      !hidden.has(p.id) &&
+      !(opts.kidsFilter && p.sensitive) &&
+      (category === "all" || p.categories.includes(category)),
+  );
+}
+
+export function selectCard(hand: Hand, person: Person, category: CategoryId, now = new Date()): SelectedCard {
+  const state = cardState(person, category);
+  if (!state.playable || person.score.status !== "ok") {
+    throw new Error("このカードは勝負に使えません");
+  }
+  // 選んだ時点の値をコピーして固定する（公開までにデータが更新されても変わらない）
+  return {
+    person: structuredClone(person),
+    category,
+    mode: hand.mode,
+    period: { ...hand.period },
+    fetchedAt: hand.fetchedAt,
+    views: person.score.views,
+    selectedAt: now.toISOString(),
+  };
+}
+
+/** 1234567 → "1,234,567" */
+export function formatViews(n: number): string {
+  return n.toLocaleString("ja-JP");
+}
+
+/** 1234567 → "約123万回"（子どもにも大きさが伝わる言い方） */
+export function approxViews(n: number): string {
+  if (n >= 100_000_000) return `約${Math.floor(n / 10_000_000) / 10}億回`;
+  if (n >= 10_000) return `約${Math.floor(n / 10_000).toLocaleString("ja-JP")}万回`;
+  return `${n.toLocaleString("ja-JP")}回`;
+}
+
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  // 取得日は UTC の日付で表示（集計期間と同じ基準）
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（UTC）`;
+}
