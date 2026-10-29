@@ -34,7 +34,7 @@ type Load =
 
 type Screen = "birthday" | "hand" | "duel" | "settings";
 
-// サーバーは最大 300 秒まで待つ設定だが、子どもが待てる長さで打ち切って再試行を案内する
+// サーバーは最大 300 秒まで待つ設定だが、その場で待てる長さで打ち切って再試行を案内する
 const CLIENT_TIMEOUT_MS = 150_000;
 
 async function fetchLiveHand(b: Birthday, retry: boolean): Promise<Hand> {
@@ -191,7 +191,7 @@ export default function Game() {
   };
 
   if (!mounted) {
-    return <main className="flex min-h-dvh items-center justify-center text-ink-soft">よみこみ中…</main>;
+    return <main className="flex min-h-dvh items-center justify-center text-ink-soft">読み込み中…</main>;
   }
 
   let view: React.ReactNode;
@@ -300,15 +300,13 @@ function StatusScreen({
       <div className="flex justify-center">
         <ModeBadge demo={demo} />
       </div>
-      <p className="text-lg font-bold">{formatBirthday(birthday)}生まれ</p>
+      <p className="text-3xl font-bold text-gold">{formatBirthday(birthday)}</p>
 
       {(load.status === "loading" || load.status === "idle") && (
-        <div role="status" className="space-y-3">
-          <p className="animate-bounce text-6xl" aria-hidden>
-            🃏
-          </p>
-          <p className="text-2xl font-black">手札をあつめています…</p>
-          <p className="text-ink-soft">
+        <div role="status" className="space-y-4">
+          <div aria-hidden className="mx-auto size-12 animate-spin rounded-full border-4 border-line border-t-gold" />
+          <p className="text-xl font-bold">手札を集めています…</p>
+          <p className="text-sm text-ink-soft">
             Wikidata と Wikipedia から人物と閲覧数を集めています。この誕生日を初めて開くときは 1 分ほどかかることがあります。
           </p>
         </div>
@@ -316,10 +314,8 @@ function StatusScreen({
 
       {load.status === "error" && (
         <div role="alert" className="space-y-3">
-          <p className="text-6xl" aria-hidden>
-            {load.kind === "timeout" ? "⏰" : "📡"}
-          </p>
-          <p className="text-2xl font-black">
+          <p className="text-xs font-bold tracking-[0.3em] text-gold">{load.kind === "timeout" ? "TIMEOUT" : "ERROR"}</p>
+          <p className="text-2xl font-bold">
             {load.kind === "timeout" ? "時間切れになりました" : "人物データを取得できませんでした"}
           </p>
           <p>{load.message}</p>
@@ -336,7 +332,7 @@ function StatusScreen({
 
       {load.status === "no-demo" && (
         <div className="space-y-3">
-          <p className="text-2xl font-black">この誕生日のデモデータはありません</p>
+          <p className="text-2xl font-bold">この誕生日のデモデータはありません</p>
           <p className="text-ink-soft">デモモードでは、次の誕生日で試せます。</p>
           {DEMO_BIRTHDAYS.map((b) => (
             <BigButton key={birthdayKey(b)} variant="secondary" onClick={() => onDemo(b)}>

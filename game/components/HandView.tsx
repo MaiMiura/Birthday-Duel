@@ -50,14 +50,14 @@ export default function HandView({
 
   return (
     <main className="mx-auto min-h-dvh max-w-2xl pb-16">
-      <header className="sticky top-0 z-10 border-b-2 border-stone-200 bg-paper/95 px-4 pt-3 pb-2 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-line bg-bg/95 px-4 pt-3 pb-2 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
           <ModeBadge demo={demo} />
           <div className="flex gap-2">
             <button
               type="button"
               onClick={onChangeBirthday}
-              className="min-h-11 rounded-xl border-2 border-stone-300 bg-white px-3 text-sm font-bold"
+              className="min-h-11 rounded-lg border border-line bg-surface px-3 text-sm font-bold"
             >
               誕生日を変える
             </button>
@@ -65,29 +65,29 @@ export default function HandView({
               type="button"
               onClick={onSettings}
               aria-label="設定"
-              className="min-h-11 min-w-11 rounded-xl border-2 border-stone-300 bg-white px-3 text-lg"
+              className="min-h-11 min-w-11 rounded-lg border border-line bg-surface px-3 text-base"
             >
-              ⚙️
+              ⚙
             </button>
           </div>
         </div>
-        <h1 className="mt-2 text-center">
-          <span className="block text-sm font-bold text-ink-soft">あなたの誕生日</span>
-          <span className="block text-4xl font-black text-brand">{formatBirthday(hand)}</span>
+        <h1 className="mt-3 text-center">
+          <span className="block text-xs font-bold tracking-[0.3em] text-ink-soft">YOUR BIRTHDAY</span>
+          <span className="block text-4xl font-bold tracking-wide text-gold">{formatBirthday(hand)}</span>
         </h1>
         <nav aria-label="カテゴリー" className="-mx-4 mt-3 overflow-x-auto px-4">
           <ul className="flex w-max gap-2 pb-1">
             {CATEGORIES.map((c) => (
               <li key={c.id}>
-                <TabButton active={tab === c.id} onClick={() => onTab(c.id)} color={CATEGORY_STYLE[c.id]}>
-                  <span aria-hidden>{c.emoji}</span> {c.label}
-                  <span className="ml-1 text-xs opacity-80">{counts[c.id]}</span>
+                <TabButton active={tab === c.id} onClick={() => onTab(c.id)} activeBg={CATEGORY_STYLE[c.id].bg}>
+                  {c.label}
+                  <span className="ml-1.5 text-xs opacity-75">{counts[c.id]}</span>
                 </TabButton>
               </li>
             ))}
             <li>
               <TabButton active={tab === "all"} onClick={() => onTab("all")}>
-                📖 図鑑（すべて）
+                図鑑（すべて）
               </TabButton>
             </li>
           </ul>
@@ -95,21 +95,13 @@ export default function HandView({
       </header>
 
       <div className="space-y-3 px-4 pt-4">
-        {tab !== "all" ? (
-          <p className="text-sm text-ink-soft">
-            {categoryRule(tab).examples}。カードをタップして、勝負に出す 1 枚をえらんでね。
-          </p>
-        ) : (
-          <p className="text-sm text-ink-soft">
-            同じ誕生日の人物の一覧です。勝負に出すときはカテゴリーのタブからえらんでね。
-          </p>
-        )}
+        <p className="text-sm text-ink-soft">
+          {tab !== "all"
+            ? `${categoryRule(tab).examples}。勝負に出す 1 枚を選んでください。`
+            : "同じ誕生日の人物の一覧です。勝負に出すときは、カテゴリーのタブから選んでください。"}
+        </p>
 
-        {demo && (
-          <Notice tone="demo">
-            デモモードです。人物は架空で、知名度スコアはデモ値です。
-          </Notice>
-        )}
+        {demo && <Notice tone="demo">デモモードです。人物は架空で、知名度スコアはデモ値です。</Notice>}
         {hand.truncated && (
           <Notice>
             人数が多いため、記事のある言語数が多い順に {hand.people.length.toLocaleString()} 人まで表示しています（全{" "}
@@ -118,29 +110,24 @@ export default function HandView({
         )}
         {failedCount > 0 && (
           <Notice tone="warn">
-            <span>
-              {failedCount} 人のスコアを取得できませんでした。そのカードは勝負に使えません。
-            </span>
+            <span>{failedCount} 人のスコアを取得できませんでした。そのカードは勝負に使えません。</span>
             <button
               type="button"
               onClick={onRetryScores}
               disabled={retrying || demo}
-              className="ml-auto min-h-11 shrink-0 rounded-xl bg-white px-3 font-bold text-amber-900 disabled:opacity-50"
+              className="ml-auto min-h-11 shrink-0 rounded-lg border border-gold px-3 font-bold text-gold disabled:opacity-50"
             >
               {retrying ? "再試行中…" : demo ? "（デモ）" : "再試行"}
             </button>
           </Notice>
         )}
         {filteredCount > 0 && (
-          <p className="text-xs text-ink-soft">子ども向けフィルターで {filteredCount} 人を隠しています（設定で変更できます）。</p>
+          <p className="text-xs text-ink-soft">センシティブな人物を {filteredCount} 人非表示にしています（設定で変更できます）。</p>
         )}
 
         {people.length === 0 ? (
-          <div className="rounded-3xl border-2 border-dashed border-stone-300 bg-white p-6 text-center">
-            <p className="text-4xl" aria-hidden>
-              🃏
-            </p>
-            <p className="mt-2 text-lg font-bold">
+          <div className="rounded-2xl border border-dashed border-line p-6 text-center">
+            <p className="text-lg font-bold">
               {tab === "all"
                 ? "この誕生日の人物は見つかりませんでした。"
                 : "このカテゴリーのカードはありません。別のカテゴリーで遊ぶか、この勝負はパスしてください"}
@@ -179,25 +166,24 @@ function TabButton({
   active,
   onClick,
   children,
-  color,
+  activeBg = "bg-ink",
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  color?: { bg: string; border: string; text: string };
+  activeBg?: string;
 }) {
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`min-h-11 rounded-full border-2 px-4 text-base font-bold whitespace-nowrap ${
+      className={`min-h-11 rounded-full border px-4 text-sm font-bold whitespace-nowrap ${
         active
-          ? `${color?.bg ?? "bg-ink"} ${color?.border ?? "border-ink"} text-white underline decoration-2 underline-offset-4`
-          : `bg-white ${color?.border ?? "border-stone-300"} ${color?.text ?? "text-ink"}`
+          ? `${activeBg} border-transparent ${activeBg === "bg-ink" ? "text-bg" : "text-white"} underline decoration-2 underline-offset-4`
+          : "border-line bg-surface text-ink-soft"
       }`}
     >
-      {active && <span aria-hidden>✓ </span>}
       {children}
     </button>
   );
@@ -205,14 +191,14 @@ function TabButton({
 
 function Notice({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "warn" | "demo" }) {
   const style = {
-    info: "border-sky-300 bg-sky-50 text-sky-950",
-    warn: "border-amber-400 bg-amber-50 text-amber-950",
-    demo: "border-dashed border-amber-500 bg-amber-50 text-amber-950",
+    info: "border-line bg-surface",
+    warn: "border-gold/60 bg-surface",
+    demo: "border-dashed border-gold/60 bg-surface",
   }[tone];
-  const icon = { info: "ℹ️", warn: "⚠️", demo: "🧪" }[tone];
+  const label = { info: "INFO", warn: "注意", demo: "DEMO" }[tone];
   return (
-    <div className={`flex items-center gap-2 rounded-2xl border-2 p-3 text-sm ${style}`}>
-      <span aria-hidden>{icon}</span>
+    <div className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${style}`}>
+      <span className="shrink-0 text-xs font-bold tracking-wide text-gold">{label}</span>
       {children}
     </div>
   );
@@ -225,23 +211,21 @@ function PersonTile({ person, tab, onOpen }: { person: Person; tab: Tab; onOpen:
     <button
       type="button"
       onClick={onOpen}
-      className={`flex h-full w-full flex-col overflow-hidden rounded-2xl border-2 bg-white text-left shadow-sm transition active:scale-[0.98] ${
-        state.playable ? "border-stone-200" : "border-dashed border-stone-300"
+      className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-surface text-left transition active:scale-[0.98] ${
+        state.playable ? "border-line" : "border-dashed border-line"
       }`}
     >
       <div className="relative">
-        <CardVisual person={person} category={cat} className={`aspect-[4/3] w-full ${state.playable ? "" : "opacity-60"}`} />
+        <CardVisual person={person} category={cat} className={`aspect-[4/3] w-full ${state.playable ? "" : "opacity-50"}`} />
         {!state.playable && (
-          <span className="absolute top-2 left-2 rounded-md bg-stone-800/85 px-2 py-0.5 text-xs font-bold text-white">
-            🚫 {state.label}
+          <span className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-xs font-bold text-white">
+            × {state.label}
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2.5">
-        <span className="text-base leading-snug font-black">{person.name}</span>
-        <span className="line-clamp-2 text-xs text-ink-soft">
-          {person.description ?? "紹介文はありません"}
-        </span>
+        <span className="text-base leading-snug font-bold">{person.name}</span>
+        <span className="line-clamp-2 text-xs text-ink-soft">{person.description ?? "紹介文はありません"}</span>
         <span className="mt-auto flex flex-wrap gap-1 pt-1">
           {person.categories.map((c) => (
             <CategoryBadge key={c} id={c} />
@@ -279,18 +263,18 @@ function DetailSheet({
   const state = cardState(person, tab);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 sm:items-center" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`${person.name}のくわしい情報`}
         onClick={(e) => e.stopPropagation()}
-        className="sheet-up max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white sm:rounded-3xl"
+        className="sheet-up max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface sm:rounded-2xl"
       >
         <CardVisual
           person={person}
           category={tab !== "all" ? tab : undefined}
-          className="aspect-[4/3] w-full sm:rounded-t-3xl"
+          className="aspect-[16/10] w-full sm:rounded-t-2xl"
           large
         />
         <div className="space-y-3 p-5">
@@ -299,27 +283,27 @@ function DetailSheet({
               <CategoryBadge key={c} id={c} />
             ))}
           </div>
-          <h2 className="text-2xl font-black">{person.name}</h2>
+          <h2 className="text-2xl font-bold">{person.name}</h2>
           <p className="text-base">{person.description ?? <span className="text-ink-soft">紹介文はありません</span>}</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            <dt className="font-bold text-ink-soft">生年月日</dt>
+            <dt className="text-ink-soft">生年月日</dt>
             <dd>
               {formatBirthDate(person.birthDate)}
               {person.julian && <span className="block text-xs text-ink-soft">ユリウス暦の記録をグレゴリオ暦に換算した日付</span>}
             </dd>
-            <dt className="font-bold text-ink-soft">職業</dt>
+            <dt className="text-ink-soft">職業</dt>
             <dd>{person.occupations.map((o) => o.label).join("、") || "登録なし"}</dd>
             {person.nameLang !== "ja" && (
               <>
-                <dt className="font-bold text-ink-soft">名前</dt>
+                <dt className="text-ink-soft">名前</dt>
                 <dd>日本語の名前が登録されていないため、{person.nameLang} の表記です</dd>
               </>
             )}
           </dl>
 
           {!state.playable && (
-            <p className="rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-3 text-sm">
-              🚫 <strong>{state.label}</strong>：{state.detail}
+            <p className="rounded-lg border border-dashed border-line p-3 text-sm">
+              <strong>× {state.label}</strong>：{state.detail}
             </p>
           )}
 
@@ -336,13 +320,13 @@ function DetailSheet({
               ref={closeRef}
               type="button"
               onClick={onClose}
-              className="min-h-12 w-full rounded-2xl text-base font-bold text-ink-soft underline"
+              className="min-h-12 w-full rounded-xl text-base font-bold text-ink-soft underline"
             >
               閉じる
             </button>
           </div>
 
-          <section className="border-t border-stone-200 pt-3 text-xs leading-relaxed text-ink-soft">
+          <section className="border-t border-line pt-3 text-xs leading-relaxed text-ink-soft">
             <h3 className="font-bold">出典</h3>
             <ul className="mt-1 space-y-1">
               {person.jaUrl && (

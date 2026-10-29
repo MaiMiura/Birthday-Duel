@@ -56,7 +56,7 @@ export interface Person {
   julian: boolean;
   occupations: Occupation[];
   categories: CategoryId[];
-  /** 子ども向けフィルターで隠す理由（なければ null） */
+  /** 「センシティブな人物を隠す」設定で隠す理由（なければ null） */
   sensitive: string | null;
   jaTitle: string | null;
   jaUrl: string | null;

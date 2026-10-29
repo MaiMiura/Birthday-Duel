@@ -1,7 +1,7 @@
 // デモモード用のデータ。人物はすべて架空で、閲覧数は「デモ値」。
 // 実データと同じ Hand の形にして、画面とカード操作を共通にしている。
 // 確認したいケース（複数カテゴリー、画像あり/なし、スコア 0、取得失敗、日本語版なし、
-// カテゴリーなし、子ども向けフィルター、ユリウス暦、2 月 29 日、候補のいないカテゴリー）を含める。
+// カテゴリーなし、センシティブな人物の非表示、ユリウス暦、2 月 29 日、候補のいないカテゴリー）を含める。
 
 import { scorePeriod } from "./period";
 import type { CategoryId, Hand, Person, Score } from "./types";
@@ -33,7 +33,7 @@ const DEMO: Record<string, DemoPerson[]> = {
     { id: "D1029-7", name: "風間 つよし", year: "1984", description: "架空のマラソン選手。スコア取得失敗の例（デモ）", categories: ["sports"], occupations: ["陸上競技選手"], score: { status: "failed", reason: "デモ: 閲覧数 API がタイムアウトした想定" } },
     { id: "D1029-8", name: "Emma Nordlund", year: "1993", description: "架空の海外歌手。日本語版の記事がない例（デモ）", categories: ["music"], occupations: ["歌手"], score: { status: "no-article" }, noArticle: true },
     { id: "D1029-9", name: "筆野 ことは", year: "1950", description: "架空の小説家。どのカテゴリーにも入らない例（デモ）", categories: [], occupations: ["小説家"], score: { status: "not-fetched" } },
-    { id: "D1029-10", name: "影山 くろう", year: "1970", description: "子ども向けフィルターの確認用の架空の人物（デモ）", categories: ["history"], occupations: ["犯罪者"], score: views(3_000_000), sensitive: "犯罪者として記録" },
+    { id: "D1029-10", name: "影山 くろう", year: "1970", description: "「センシティブな人物を隠す」設定の確認用の架空の人物（デモ）", categories: ["history"], occupations: ["犯罪者"], score: views(3_000_000), sensitive: "犯罪者として記録" },
     { id: "D1029-11", name: "名もなき 画家", year: "1910", description: null, categories: ["knowledge"], occupations: ["思想家"], score: views(12_345) },
   ],
   "02-29": [

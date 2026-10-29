@@ -114,7 +114,7 @@ export function categoryRule(id: CategoryId): CategoryRule {
   return rule;
 }
 
-// 子ども向けフィルター（設定でオフにできる）で隠す人物の判定ルール。
+// 「センシティブな人物を隠す」設定（既定でオン、設定でオフにできる）で隠す人物の判定ルール。
 // 職業はカテゴリーと同じく、下位分類も含めて判定する。
 export const SENSITIVE_OCCUPATIONS: { id: string; reason: string }[] = [
   { id: "Q488111", reason: "アダルト作品への出演" }, // pornographic actor

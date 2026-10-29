@@ -40,4 +40,4 @@ python3 birthday_people.py 10-29 歌手 --sort sitelinks   # 世界的な知名�
 
 ## game/ — バースデー・デュエル（カードゲーム）
 
-自分と同じ誕生日の有名人を手札にして、その場の友だちと知名度（日本語版 Wikipedia の閲覧数）で勝負する Web アプリです。Next.js で作っています。起動方法や仕組みは [game/README.md](game/README.md) を見てください。
+自分と同じ誕生日の有名人を手札にして、その場の仲間と知名度（日本語版 Wikipedia の閲覧数）で勝負する Web アプリです。Next.js で作っています。起動方法や仕組みは [game/README.md](game/README.md) を見てください。

@@ -3,13 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "バースデー・デュエル",
-  description: "自分と同じ誕生日の有名人をカードにして、友だちと知名度で勝負するゲーム",
+  description: "同じ誕生日の有名人をカードにして、その場の仲間と知名度で勝負するパーティーゲーム",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fffaf2",
+  themeColor: "#0f0d14",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -11,7 +11,7 @@ const groups: [string, string[]][] = [
     [`${c.label}（含める）`, c.roots],
     ...(c.exclude.length ? [[`${c.label}（除外）`, c.exclude] as [string, string[]]] : []),
   ]),
-  ["子ども向けフィルター", SENSITIVE_OCCUPATIONS.map((s) => s.id)],
+  ["センシティブな人物を隠す", SENSITIVE_OCCUPATIONS.map((s) => s.id)],
 ];
 let labels: Map<string, string>;
 try {

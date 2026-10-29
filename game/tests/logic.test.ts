@@ -65,7 +65,7 @@ describe("カテゴリー分類", () => {
     assert.deepEqual(classify(["Q36180"], ancestors), []); // writer
     assert.deepEqual(classify([], ancestors), []);
   });
-  it("子ども向けフィルターの判定", () => {
+  it("センシティブな人物の判定", () => {
     assert.equal(sensitiveReason(["Q_AV"], null, ancestors), "アダルト作品への出演");
     assert.equal(sensitiveReason(["Q33999"], "日本のタレント、元AV女優", ancestors), "アダルト作品への出演");
     assert.equal(sensitiveReason(["Q33999"], "日本の俳優", ancestors), null);
@@ -96,7 +96,7 @@ describe("カードとスコア", () => {
     assert.deepEqual(card.period, { start: "2025-10", end: "2026-09" });
     assert.equal(card.mode, "demo");
   });
-  it("子ども向けフィルターと外したカード", () => {
+  it("センシティブな人物の非表示と外したカード", () => {
     const all = visiblePeople(hand, "history", { kidsFilter: false, hiddenIds: [] });
     const kids = visiblePeople(hand, "history", { kidsFilter: true, hiddenIds: [] });
     assert.equal(all.length - kids.length, 1);

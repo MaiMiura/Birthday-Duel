@@ -63,7 +63,7 @@ export function formatViews(n: number): string {
   return n.toLocaleString("ja-JP");
 }
 
-/** 1234567 → "約123万回"（子どもにも大きさが伝わる言い方） */
+/** 1234567 → "約123万回"（ひと目で大きさが伝わる言い方） */
 export function approxViews(n: number): string {
   if (n >= 100_000_000) return `約${Math.floor(n / 10_000_000) / 10}億回`;
   if (n >= 10_000) return `約${Math.floor(n / 10_000).toLocaleString("ja-JP")}万回`;
