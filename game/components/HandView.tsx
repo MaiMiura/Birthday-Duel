@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { formatBirthDate, formatBirthday } from "@/lib/birthday";
+import { useEffect, useRef, useState } from "react";
+import { formatBirthDate } from "@/lib/birthday";
 import { CATEGORIES, categoryRule } from "@/lib/categories";
 import { cardState, formatDateTime, visiblePeople } from "@/lib/game";
 import { formatPeriod } from "@/lib/period";
 import type { Settings } from "@/lib/storage";
 import type { CategoryId, Hand, Person } from "@/lib/types";
-import { BigButton, CardVisual, CategoryBadge, CATEGORY_STYLE, ModeBadge } from "./ui";
+import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar } from "./ui";
 
 export type Tab = CategoryId | "all";
 
@@ -42,66 +42,82 @@ export default function HandView({
 }) {
   const demo = hand.mode === "demo";
   const people = visiblePeople(hand, tab, settings);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = tab !== "all" ? people.find((p) => p.id === selectedId && cardState(p, tab).playable) : undefined;
   const failedCount = hand.people.filter((p) => p.score.status === "failed").length;
   const filteredCount = settings.kidsFilter ? hand.people.filter((p) => p.sensitive).length : 0;
   const counts = Object.fromEntries(
     CATEGORIES.map((c) => [c.id, visiblePeople(hand, c.id, settings).length]),
   ) as Record<CategoryId, number>;
 
+  const tap = (p: Person) => {
+    // カテゴリーのタブでは、勝負に使えるカードはタップで選ぶ。それ以外は詳細を開く
+    if (tab !== "all" && cardState(p, tab).playable) setSelectedId(p.id === selectedId ? null : p.id);
+    else onOpen(p);
+  };
+
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl pb-16">
-      <header className="sticky top-0 z-10 border-b border-line bg-bg/95 px-4 pt-3 pb-2 backdrop-blur">
-        <div className="flex items-center justify-between gap-2">
-          <ModeBadge demo={demo} />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onChangeBirthday}
-              className="min-h-11 rounded-lg border border-line bg-surface px-3 text-sm font-bold"
-            >
+    <main className="mx-auto min-h-dvh max-w-2xl px-4 pt-3 pb-32">
+      <TopBar demo={demo} onMenu={onSettings} />
+
+      <header className="mt-3 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[3.4rem] leading-none">
+            <span className="slant lime-mark px-1">
+              {hand.month}
+              <span className="font-sans text-3xl font-black">月</span>
+              {hand.day}
+              <span className="font-sans text-3xl font-black">日</span>
+            </span>
+          </h1>
+          <p className="mt-2 flex items-center gap-3 text-base font-black">
+            あなたの手札
+            <button type="button" onClick={onChangeBirthday} className="min-h-11 text-xs font-bold text-ink-soft underline">
               誕生日を変える
             </button>
-            <button
-              type="button"
-              onClick={onSettings}
-              aria-label="設定"
-              className="min-h-11 min-w-11 rounded-lg border border-line bg-surface px-3 text-base"
-            >
-              ⚙
-            </button>
-          </div>
+          </p>
         </div>
-        <h1 className="mt-3 text-center">
-          <span className="block text-xs font-bold tracking-[0.3em] text-ink-soft">YOUR BIRTHDAY</span>
-          <span className="block text-4xl font-bold tracking-wide text-gold">{formatBirthday(hand)}</span>
-        </h1>
-        <nav aria-label="カテゴリー" className="-mx-4 mt-3 overflow-x-auto px-4">
-          <ul className="flex w-max gap-2 pb-1">
-            {CATEGORIES.map((c) => (
-              <li key={c.id}>
-                <TabButton active={tab === c.id} onClick={() => onTab(c.id)} activeBg={CATEGORY_STYLE[c.id].bg}>
-                  {c.label}
-                  <span className="ml-1.5 text-xs opacity-75">{counts[c.id]}</span>
-                </TabButton>
-              </li>
-            ))}
-            <li>
-              <TabButton active={tab === "all"} onClick={() => onTab("all")}>
-                図鑑（すべて）
-              </TabButton>
-            </li>
-          </ul>
-        </nav>
+        <p className="mb-12 max-w-32 text-[0.7rem] leading-relaxed text-ink-soft">この日生まれの有名人カードを集めました。</p>
       </header>
 
-      <div className="space-y-3 px-4 pt-4">
-        <p className="text-sm text-ink-soft">
+      <nav aria-label="カテゴリー" className="-mx-4 mt-2 overflow-x-auto px-4">
+        <ul className="flex w-max gap-1 rounded-2xl bg-surface p-1 shadow-sm">
+          {CATEGORIES.map((c) => (
+            <li key={c.id}>
+              <TabButton
+                active={tab === c.id}
+                onClick={() => {
+                  setSelectedId(null);
+                  onTab(c.id);
+                }}
+                color={tab === c.id ? "" : c.id}
+              >
+                {c.label}
+                <span className="ml-1 text-[0.65rem] opacity-60">{counts[c.id]}</span>
+              </TabButton>
+            </li>
+          ))}
+          <li>
+            <TabButton
+              active={tab === "all"}
+              onClick={() => {
+                setSelectedId(null);
+                onTab("all");
+              }}
+            >
+              図鑑
+            </TabButton>
+          </li>
+        </ul>
+      </nav>
+
+      <div className="mt-4 space-y-2">
+        <p className="text-xs text-ink-soft">
           {tab !== "all"
-            ? `${categoryRule(tab).examples}。勝負に出す 1 枚を選んでください。`
+            ? `${categoryRule(tab).examples}。カードをタップして選び、下のボタンで勝負。`
             : "同じ誕生日の人物の一覧です。勝負に出すときは、カテゴリーのタブから選んでください。"}
         </p>
-
-        {demo && <Notice tone="demo">デモモードです。人物は架空で、知名度スコアはデモ値です。</Notice>}
+        {demo && <Notice>デモモードです。人物は架空で、知名度スコアはデモ値です。</Notice>}
         {hand.truncated && (
           <Notice>
             人数が多いため、記事のある言語数が多い順に {hand.people.length.toLocaleString()} 人まで表示しています（全{" "}
@@ -109,45 +125,64 @@ export default function HandView({
           </Notice>
         )}
         {failedCount > 0 && (
-          <Notice tone="warn">
+          <Notice>
             <span>{failedCount} 人のスコアを取得できませんでした。そのカードは勝負に使えません。</span>
             <button
               type="button"
               onClick={onRetryScores}
               disabled={retrying || demo}
-              className="ml-auto min-h-11 shrink-0 rounded-lg border border-gold px-3 font-bold text-gold disabled:opacity-50"
+              className="ml-auto min-h-11 shrink-0 rounded-full bg-ink px-4 text-xs font-bold text-white disabled:opacity-40"
             >
               {retrying ? "再試行中…" : demo ? "（デモ）" : "再試行"}
             </button>
           </Notice>
         )}
         {filteredCount > 0 && (
-          <p className="text-xs text-ink-soft">センシティブな人物を {filteredCount} 人非表示にしています（設定で変更できます）。</p>
+          <p className="text-[0.7rem] text-ink-soft">
+            センシティブな人物を {filteredCount} 人非表示にしています（メニューの設定で変更できます）。
+          </p>
         )}
-
-        {people.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line p-6 text-center">
-            <p className="text-lg font-bold">
-              {tab === "all"
-                ? "この誕生日の人物は見つかりませんでした。"
-                : "このカテゴリーのカードはありません。別のカテゴリーで遊ぶか、この勝負はパスしてください"}
-            </p>
-          </div>
-        ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {people.map((p) => (
-              <li key={p.id}>
-                <PersonTile person={p} tab={tab} onOpen={() => onOpen(p)} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <footer className="pt-4 text-xs leading-relaxed text-ink-soft">
-          知名度スコアは日本語版 Wikipedia の閲覧数をもとにした指標です。集計期間 {formatPeriod(hand.period)}
-          （UTC）・データ取得日 {formatDateTime(hand.fetchedAt)}。人物データ: Wikidata（CC0）。
-        </footer>
       </div>
+
+      {people.length === 0 ? (
+        <div className="mt-4 rounded-3xl border-2 border-dashed border-line bg-surface/60 p-6 text-center">
+          <p className="text-base font-black">
+            {tab === "all"
+              ? "この誕生日の人物は見つかりませんでした。"
+              : "このカテゴリーのカードはありません。別のカテゴリーで遊ぶか、この勝負はパスしてください"}
+          </p>
+        </div>
+      ) : (
+        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {people.map((p) => (
+            <li key={p.id}>
+              <PersonTile
+                person={p}
+                tab={tab}
+                demo={demo}
+                selected={selected?.id === p.id}
+                onTap={() => tap(p)}
+                onInfo={() => onOpen(p)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <footer className="mt-6 text-[0.7rem] leading-relaxed text-ink-soft">
+        知名度スコアは日本語版 Wikipedia の閲覧数をもとにした指標です。集計期間 {formatPeriod(hand.period)}
+        （UTC）・データ取得日 {formatDateTime(hand.fetchedAt)}。人物データ: Wikidata（CC0）。
+      </footer>
+
+      {tab !== "all" && people.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-10 bg-linear-to-t from-paper via-paper/90 to-transparent px-4 pt-6 pb-5">
+          <div className="mx-auto max-w-md">
+            <LimeButton disabled={!selected} onClick={() => selected && onChoose(selected, tab)}>
+              {selected ? "このカードで勝負" : "カードを選んでください"}
+            </LimeButton>
+          </div>
+        </div>
+      )}
 
       {detail && (
         <DetailSheet
@@ -166,73 +201,100 @@ function TabButton({
   active,
   onClick,
   children,
-  activeBg = "bg-ink",
+  color,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  activeBg?: string;
+  color?: CategoryId | "";
 }) {
+  const text = {
+    entertainment: "text-cat-entertainment",
+    music: "text-cat-music",
+    sports: "text-cat-sports",
+    knowledge: "text-cat-knowledge",
+    history: "text-cat-history",
+  };
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`min-h-11 rounded-full border px-4 text-sm font-bold whitespace-nowrap ${
-        active
-          ? `${activeBg} border-transparent ${activeBg === "bg-ink" ? "text-bg" : "text-white"} underline decoration-2 underline-offset-4`
-          : "border-line bg-surface text-ink-soft"
+      className={`relative min-h-11 rounded-xl px-4 text-sm font-black whitespace-nowrap ${
+        active ? "bg-ink text-white" : color ? text[color] : "text-ink"
       }`}
     >
       {children}
+      {active && <span aria-hidden className="absolute inset-x-4 bottom-1.5 h-1 -skew-x-12 bg-lime" />}
     </button>
   );
 }
 
-function Notice({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "warn" | "demo" }) {
-  const style = {
-    info: "border-line bg-surface",
-    warn: "border-gold/60 bg-surface",
-    demo: "border-dashed border-gold/60 bg-surface",
-  }[tone];
-  const label = { info: "INFO", warn: "注意", demo: "DEMO" }[tone];
-  return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${style}`}>
-      <span className="shrink-0 text-xs font-bold tracking-wide text-gold">{label}</span>
-      {children}
-    </div>
-  );
+function Notice({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 text-xs leading-relaxed shadow-sm">{children}</div>;
 }
 
-function PersonTile({ person, tab, onOpen }: { person: Person; tab: Tab; onOpen: () => void }) {
+function PersonTile({
+  person,
+  tab,
+  demo,
+  selected,
+  onTap,
+  onInfo,
+}: {
+  person: Person;
+  tab: Tab;
+  demo: boolean;
+  selected: boolean;
+  onTap: () => void;
+  onInfo: () => void;
+}) {
   const state = cardState(person, tab);
   const cat = tab !== "all" ? tab : person.categories[0];
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`flex h-full w-full flex-col overflow-hidden rounded-xl border bg-surface text-left transition active:scale-[0.98] ${
-        state.playable ? "border-line" : "border-dashed border-line"
+    <div
+      className={`relative h-full overflow-hidden rounded-2xl bg-surface p-1.5 shadow-sm transition ${
+        selected ? "ring-4 ring-lime" : ""
       }`}
     >
-      <div className="relative">
-        <CardVisual person={person} category={cat} className={`aspect-[4/3] w-full ${state.playable ? "" : "opacity-50"}`} />
-        {!state.playable && (
-          <span className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-xs font-bold text-white">
-            × {state.label}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-1 p-2.5">
-        <span className="text-base leading-snug font-bold">{person.name}</span>
-        <span className="line-clamp-2 text-xs text-ink-soft">{person.description ?? "紹介文はありません"}</span>
-        <span className="mt-auto flex flex-wrap gap-1 pt-1">
-          {person.categories.map((c) => (
-            <CategoryBadge key={c} id={c} />
-          ))}
-        </span>
-      </div>
-    </button>
+      <button type="button" onClick={onTap} aria-pressed={selected} className="block w-full text-left">
+        <div className="relative">
+          <CardVisual person={person} className={`aspect-[4/5] w-full rounded-xl ${state.playable ? "" : "opacity-45"}`} />
+          {demo && (
+            <span className="absolute top-1.5 right-1.5 rounded bg-black/70 px-1.5 text-[0.6rem] font-bold text-white">
+              DEMO
+            </span>
+          )}
+          {!state.playable && (
+            <span className="absolute bottom-2 left-2 rounded-md bg-black/80 px-2 py-0.5 text-[0.7rem] font-bold text-white">
+              × {state.label}
+            </span>
+          )}
+          {selected && (
+            <span className="absolute bottom-2 left-2 rounded-md bg-lime px-2 py-0.5 text-[0.7rem] font-black text-ink">
+              ✓ 選択中
+            </span>
+          )}
+        </div>
+        <div className="px-1.5 pt-2 pb-1">
+          <p className="text-base leading-snug font-black">{person.name}</p>
+          <p className="mt-0.5 line-clamp-1 text-[0.7rem] text-ink-soft">{person.description ?? "紹介文はありません"}</p>
+          {cat && (
+            <p className="mt-1">
+              <CategoryLabel id={cat} />
+            </p>
+          )}
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onInfo}
+        aria-label={`${person.name}の詳細`}
+        className="absolute top-2.5 left-2.5 flex size-8 items-center justify-center rounded-full bg-white/85 text-sm font-black text-ink shadow"
+      >
+        i
+      </button>
+    </div>
   );
 }
 
@@ -263,28 +325,29 @@ function DetailSheet({
   const state = cardState(person, tab);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`${person.name}のくわしい情報`}
         onClick={(e) => e.stopPropagation()}
-        className="sheet-up max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface sm:rounded-2xl"
+        className="sheet-up max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface sm:rounded-3xl"
       >
-        <CardVisual
-          person={person}
-          category={tab !== "all" ? tab : undefined}
-          className="aspect-[16/10] w-full sm:rounded-t-2xl"
-          large
-        />
+        <div className="relative">
+          <CardVisual person={person} className="aspect-[16/11] w-full sm:rounded-t-3xl" large />
+          <Signature name={person.nameRoman} className="bottom-6 left-5 text-4xl" />
+        </div>
         <div className="space-y-3 p-5">
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-3">
             {person.categories.map((c) => (
-              <CategoryBadge key={c} id={c} />
+              <CategoryLabel key={c} id={c} mark />
             ))}
           </div>
-          <h2 className="text-2xl font-bold">{person.name}</h2>
-          <p className="text-base">{person.description ?? <span className="text-ink-soft">紹介文はありません</span>}</p>
+          <h2 className="text-3xl font-black">{person.name}</h2>
+          {person.nameRoman && (
+            <p className="text-xs tracking-[0.35em] text-ink-soft uppercase">{person.nameRoman}</p>
+          )}
+          <p className="text-sm">{person.description ?? <span className="text-ink-soft">紹介文はありません</span>}</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             <dt className="text-ink-soft">生年月日</dt>
             <dd>
@@ -302,25 +365,23 @@ function DetailSheet({
           </dl>
 
           {!state.playable && (
-            <p className="rounded-lg border border-dashed border-line p-3 text-sm">
+            <p className="rounded-2xl bg-paper p-3 text-sm">
               <strong>× {state.label}</strong>：{state.detail}
             </p>
           )}
 
           <div className="space-y-2 pt-1">
             {playable.map((c) => (
-              <BigButton key={c} onClick={() => onChoose(c)}>
+              <LimeButton key={c} onClick={() => onChoose(c)}>
                 {tab === "all" ? `「${categoryRule(c).label}」でこのカードで勝負` : "このカードで勝負"}
-              </BigButton>
+              </LimeButton>
             ))}
-            <BigButton variant="secondary" onClick={onHide}>
-              このカードを外す
-            </BigButton>
+            <GhostButton onClick={onHide}>このカードを外す</GhostButton>
             <button
               ref={closeRef}
               type="button"
               onClick={onClose}
-              className="min-h-12 w-full rounded-xl text-base font-bold text-ink-soft underline"
+              className="min-h-12 w-full text-sm font-bold text-ink-soft underline"
             >
               閉じる
             </button>

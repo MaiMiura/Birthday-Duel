@@ -1,39 +1,166 @@
-// カードの見た目に使う小さな部品。
+// 画面で共通に使う部品（ロゴ、上部のバー、ボタン、カードの絵など）。
 
 import { categoryRule } from "@/lib/categories";
 import type { CategoryId, Person } from "@/lib/types";
 
-export const CATEGORY_STYLE: Record<CategoryId, { bg: string; text: string; border: string }> = {
-  entertainment: { bg: "bg-cat-entertainment", text: "text-cat-entertainment", border: "border-cat-entertainment" },
-  music: { bg: "bg-cat-music", text: "text-cat-music", border: "border-cat-music" },
-  sports: { bg: "bg-cat-sports", text: "text-cat-sports", border: "border-cat-sports" },
-  knowledge: { bg: "bg-cat-knowledge", text: "text-cat-knowledge", border: "border-cat-knowledge" },
-  history: { bg: "bg-cat-history", text: "text-cat-history", border: "border-cat-history" },
+export const CATEGORY_TEXT: Record<CategoryId, string> = {
+  entertainment: "text-cat-entertainment",
+  music: "text-cat-music",
+  sports: "text-cat-sports",
+  knowledge: "text-cat-knowledge",
+  history: "text-cat-history",
 };
 
-export function CategoryBadge({ id }: { id: CategoryId }) {
+export const CATEGORY_BG: Record<CategoryId, string> = {
+  entertainment: "bg-cat-entertainment",
+  music: "bg-cat-music",
+  sports: "bg-cat-sports",
+  knowledge: "bg-cat-knowledge",
+  history: "bg-cat-history",
+};
+
+/** 「BIRTHDAY DUEL」のロゴ（斜体の太字に、ライムの筆の線） */
+export function Logo({ size = "md" }: { size?: "sm" | "md" }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tracking-wide text-white ${CATEGORY_STYLE[id].bg}`}
+    <span className="inline-flex flex-col leading-none" aria-label="バースデー・デュエル">
+      <span
+        aria-hidden
+        className={`slant lime-mark font-display tracking-tight uppercase ${size === "sm" ? "text-lg" : "text-[1.7rem]"}`}
+      >
+        Birthday
+        <br />
+        Duel
+      </span>
+      {size === "md" && (
+        <span aria-hidden className="mt-1 -rotate-6 text-[0.6rem] font-bold tracking-[0.35em] text-ink-soft">
+          バースデーデュエル
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function DemoPill() {
+  return (
+    <span className="rounded-md bg-ink-soft/80 px-2 py-0.5 text-[0.7rem] font-bold tracking-wider text-white">
+      DEMO
+    </span>
+  );
+}
+
+/** 画面上部: 左にロゴか戻るボタン、右に DEMO とメニュー */
+export function TopBar({
+  demo,
+  onBack,
+  onMenu,
+  center,
+  logo = "sm",
+}: {
+  demo: boolean;
+  onBack?: () => void;
+  onMenu?: () => void;
+  center?: React.ReactNode;
+  logo?: "sm" | "md" | false;
+}) {
+  return (
+    <div className="flex min-h-12 items-center justify-between gap-2">
+      <div className="flex min-w-11 items-center">
+        {onBack ? (
+          <button type="button" onClick={onBack} aria-label="戻る" className="min-h-11 min-w-11 text-2xl">
+            ‹
+          </button>
+        ) : logo ? (
+          <Logo size={logo} />
+        ) : null}
+      </div>
+      {center && <div className="text-center">{center}</div>}
+      <div className="flex min-w-11 items-center justify-end gap-2">
+        {demo ? <DemoPill /> : <span className="text-[0.7rem] font-bold tracking-wider text-ink-soft">LIVE</span>}
+        {onMenu && (
+          <button
+            type="button"
+            onClick={onMenu}
+            aria-label="メニュー"
+            className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1.5"
+          >
+            <span className="h-0.5 w-6 bg-ink" />
+            <span className="h-0.5 w-6 bg-ink" />
+            <span className="h-0.5 w-6 bg-ink" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** ライムの丸いボタン（右に矢印） */
+export function LimeButton({
+  children,
+  onClick,
+  disabled,
+  className = "",
+  arrow = true,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  arrow?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex min-h-16 w-full items-center justify-center gap-3 rounded-full bg-lime px-6 text-xl font-black tracking-wide text-ink shadow-[0_6px_18px_rgb(150_180_0/0.35)] transition active:scale-[0.98] active:bg-lime-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft disabled:shadow-none ${className}`}
     >
+      {children}
+      {arrow && <span aria-hidden>→</span>}
+    </button>
+  );
+}
+
+export function GhostButton({
+  children,
+  onClick,
+  className = "",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-14 w-full rounded-full border border-line bg-surface px-5 text-base font-bold text-ink active:bg-paper ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function CategoryLabel({ id, mark = false }: { id: CategoryId; mark?: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-bold ${CATEGORY_TEXT[id]}`}>
+      {mark && <span aria-hidden className="inline-block size-2.5 bg-lime" />}
       {categoryRule(id).label}
     </span>
   );
 }
 
-/** 人物画像。使える画像がなければ、頭文字を大きく置いた代替ビジュアル。 */
+/**
+ * 人物の絵。使える写真があれば写真、なければ黒地に頭文字とライムの斜線のカード。
+ */
 export function CardVisual({
   person,
-  category,
   className = "",
   large = false,
 }: {
   person: Person;
-  category?: CategoryId;
   className?: string;
   large?: boolean;
 }) {
-  const cat = category ?? person.categories[0];
   if (person.image) {
     return (
       // 外部（Wikimedia）の画像をそのまま表示するため next/image ではなく img を使う
@@ -41,7 +168,7 @@ export function CardVisual({
       <img
         src={person.image.url}
         alt={`${person.name}の画像`}
-        className={`object-cover object-top ${className}`}
+        className={`bg-card-black object-cover object-top ${className}`}
         loading="lazy"
       />
     );
@@ -51,16 +178,13 @@ export function CardVisual({
     <div
       role="img"
       aria-label={`${person.name}（画像なし）`}
-      className={`relative flex items-center justify-center overflow-hidden ${
-        cat ? CATEGORY_STYLE[cat].bg : "bg-surface-2"
-      } ${className}`}
+      className={`card-back relative flex items-center justify-center overflow-hidden ${className}`}
     >
-      {/* 斜めの光と下側の影で、単色の板に見えないようにする */}
-      <span aria-hidden className="absolute inset-0 bg-linear-to-br from-white/20 via-transparent to-black/50" />
+      <span aria-hidden className="lime-slash absolute inset-0 opacity-90" />
       <span
         aria-hidden
-        className={`relative font-bold text-white/95 drop-shadow-[0_2px_8px_rgb(0_0_0/0.45)] ${
-          large ? "text-[6.5rem]" : "text-5xl"
+        className={`slant relative font-black text-white drop-shadow-[0_3px_0_rgb(0_0_0/0.6)] ${
+          large ? "text-[7rem]" : "text-6xl"
         }`}
       >
         {initial}
@@ -69,44 +193,15 @@ export function CardVisual({
   );
 }
 
-export function ModeBadge({ demo }: { demo: boolean }) {
-  return demo ? (
-    <span className="rounded-md border border-dashed border-gold px-2 py-0.5 text-xs font-bold tracking-wide text-gold">
-      DEMO・デモモード
-    </span>
-  ) : (
-    <span className="rounded-md border border-line px-2 py-0.5 text-xs font-bold tracking-wide text-ink-soft">
-      LIVE・実データ
-    </span>
-  );
-}
-
-export function BigButton({
-  children,
-  onClick,
-  variant = "primary",
-  disabled,
-  className = "",
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "secondary" | "reveal";
-  disabled?: boolean;
-  className?: string;
-}) {
-  const styles = {
-    primary: "bg-gold text-on-gold active:bg-gold-dark",
-    secondary: "border border-line bg-surface text-ink active:bg-surface-2",
-    reveal: "bg-gold py-6 text-2xl tracking-widest text-on-gold shadow-[0_0_32px_rgb(224_180_90/0.35)] active:bg-gold-dark",
-  }[variant];
+/** 写真の上に重ねる、筆記体の名前のサイン */
+export function Signature({ name, className = "" }: { name: string | null; className?: string }) {
+  if (!name) return null;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`min-h-14 w-full rounded-xl px-5 py-3 text-lg font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${styles} ${className}`}
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute -rotate-12 font-sign leading-none text-lime drop-shadow-[0_2px_2px_rgb(0_0_0/0.6)] ${className}`}
     >
-      {children}
-    </button>
+      {name}
+    </span>
   );
 }

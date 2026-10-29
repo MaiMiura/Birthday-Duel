@@ -1,44 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  /* 丸ゴシック（iPhone・Mac）。ない端末では普通のゴシック体になる */
-  --font-sans: "Hiragino Maru Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", "Noto Sans JP",
-    "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
-  /* 夜のバーのような暗い配色。文字は白に近い色で、暗い店内でも読みやすくする */
-  --color-bg: #0f0d14;
-  --color-surface: #1b1823;
-  --color-surface-2: #262230;
-  --color-line: #3b3447;
-  --color-ink: #f4efe6;
-  --color-ink-soft: #b3abbd;
-  --color-gold: #e0b45a;
-  --color-gold-dark: #9c7428;
-  --color-on-gold: #1c1406;
+  /* 日本語は太いゴシック、ロゴと数字は細長い欧文、名前のサインは筆記体（layout.tsx で Google Fonts から読み込む） */
+  --font-sans: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI",
+    "Meiryo", system-ui, sans-serif;
+  --font-display: "Anton", "Impact", "Noto Sans JP", "Hiragino Sans", sans-serif;
+  --font-sign: "Yellowtail", "Snell Roundhand", "Brush Script MT", cursive;
 
-  --color-cat-entertainment: #c2255c;
+  /* 紙のような白地に黒い文字、差し色はネオンのライム */
+  --color-paper: #efefeb;
+  --color-surface: #ffffff;
+  --color-ink: #111111;
+  --color-ink-soft: #66665f;
+  --color-line: #dcdcd5;
+  --color-lime: #d4f53c;
+  --color-lime-dark: #b3d31a;
+  --color-card-black: #141414;
+
+  --color-cat-entertainment: #e8590c;
   --color-cat-music: #6741d9;
-  --color-cat-sports: #1971c2;
-  --color-cat-knowledge: #b4690e;
-  --color-cat-history: #2b8a3e;
+  --color-cat-sports: #1c6fe0;
+  --color-cat-knowledge: #c27803;
+  --color-cat-history: #12904a;
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background: var(--color-bg);
+  background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }
 
-/* カードの裏面の模様 */
-.card-back-pattern {
-  background-color: #17131f;
-  background-image:
-    repeating-linear-gradient(45deg, rgb(224 180 90 / 0.12) 0 2px, transparent 2px 14px),
-    repeating-linear-gradient(-45deg, rgb(224 180 90 / 0.12) 0 2px, transparent 2px 14px);
+/* 紙のざらつき（細かいノイズ） */
+.paper {
+  background-color: var(--color-paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 太い斜体の見出し（ロゴや「準備はいい？」） */
+.slant {
+  display: inline-block;
+  transform: skewX(-10deg);
+}
+
+/* 文字の下に引く、筆で塗ったようなライムの線 */
+.lime-mark {
+  background-image: linear-gradient(
+    176deg,
+    transparent 58%,
+    var(--color-lime) 58%,
+    var(--color-lime) 88%,
+    transparent 88%
+  );
+}
+
+/* 背景に斜めに走るライムの帯 */
+.lime-slash {
+  background: linear-gradient(115deg, transparent 47%, var(--color-lime) 47%, var(--color-lime) 53%, transparent 53%);
+}
+
+/* カードの裏面（黒地にざらついた質感） */
+.card-back {
+  background-color: var(--color-card-black);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* 裏面 → 表面のめくり演出 */

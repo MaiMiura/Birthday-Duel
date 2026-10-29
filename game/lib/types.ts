@@ -48,6 +48,8 @@ export interface Person {
   name: string;
   /** 名前が日本語以外の言語へフォールバックしたとき、その言語コード */
   nameLang: string;
+  /** ローマ字（ラテン文字）の名前。Wikidata の英語ラベルがラテン文字のときだけ。公開画面のサインに使う */
+  nameRoman: string | null;
   /** Wikidata の日本語の説明。なければ null（文章を作って補わない） */
   description: string | null;
   /** 採用した生年月日（"1987-10-29"。紀元前は "-0100-10-29"） */

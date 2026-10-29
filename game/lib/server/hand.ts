@@ -40,6 +40,7 @@ export async function buildHand(month: number, day: number, now = new Date()): P
       id: r.id,
       name: d?.name ?? r.jaTitle,
       nameLang: d?.nameLang ?? "ja",
+      nameRoman: d?.nameRoman ?? null,
       description,
       birthDate: r.birthDate,
       julian: r.julian,

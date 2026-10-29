@@ -1,11 +1,12 @@
 "use client";
 
 import type { Settings } from "@/lib/storage";
-import { BigButton, ModeBadge } from "./ui";
+import { GhostButton, LimeButton, TopBar } from "./ui";
 
 export default function SettingsView({
   settings,
   demo,
+  hasBirthday,
   onChange,
   onToggleDemo,
   onResetBirthday,
@@ -13,6 +14,7 @@ export default function SettingsView({
 }: {
   settings: Settings;
   demo: boolean;
+  hasBirthday: boolean;
   onChange: (s: Settings) => void;
   onToggleDemo: (on: boolean) => void;
   onResetBirthday: () => void;
@@ -25,11 +27,11 @@ export default function SettingsView({
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 px-4 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">設定</h1>
-        <ModeBadge demo={demo} />
-      </div>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 px-5 pt-3 pb-8">
+      <TopBar demo={demo} onBack={onBack} />
+      <h1 className="text-3xl font-black">
+        <span className="slant lime-mark px-1">設定</span>
+      </h1>
 
       <Toggle
         checked={settings.kidsFilter}
@@ -50,10 +52,10 @@ export default function SettingsView({
         description="架空の人物とデモ値で操作を試します。実データとは別物です"
       />
 
-      <section className="rounded-xl border border-line bg-surface p-4">
-        <h2 className="font-bold">外したカード（{settings.hiddenIds.length}）</h2>
+      <section className="rounded-2xl bg-surface p-4 shadow-sm">
+        <h2 className="font-black">外したカード（{settings.hiddenIds.length}）</h2>
         {settings.hiddenIds.length === 0 ? (
-          <p className="mt-1 text-sm text-ink-soft">ありません。カードの詳細画面の「このカードを外す」で外せます。</p>
+          <p className="mt-1 text-sm text-ink-soft">ありません。カードの詳細（i）の「このカードを外す」で外せます。</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {settings.hiddenIds.map((id) => (
@@ -62,7 +64,7 @@ export default function SettingsView({
                 <button
                   type="button"
                   onClick={() => restore(id)}
-                  className="min-h-11 rounded-lg border border-line px-3 text-sm font-bold"
+                  className="min-h-11 rounded-full border border-line px-4 text-sm font-bold"
                 >
                   戻す
                 </button>
@@ -72,10 +74,10 @@ export default function SettingsView({
         )}
       </section>
 
-      <BigButton variant="secondary" onClick={onResetBirthday}>
-        誕生日をリセット
-      </BigButton>
-      <BigButton onClick={onBack}>手札に戻る</BigButton>
+      {hasBirthday && <GhostButton onClick={onResetBirthday}>誕生日をリセット</GhostButton>}
+      <LimeButton onClick={onBack} arrow={false}>
+        戻る
+      </LimeButton>
     </main>
   );
 }
@@ -92,15 +94,15 @@ function Toggle({
   description: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface p-4">
+    <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-surface p-4 shadow-sm">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-5 shrink-0 accent-gold"
+        className="mt-1 size-5 shrink-0 accent-ink"
       />
       <span>
-        <span className="block font-bold">
+        <span className="block font-black">
           {title}：{checked ? "オン" : "オフ"}
         </span>
         <span className="block text-sm text-ink-soft">{description}</span>

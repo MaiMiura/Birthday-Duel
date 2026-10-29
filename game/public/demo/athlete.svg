@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360">
   <defs>
     <radialGradient id="bg" cx="50%" cy="40%" r="75%">
-      <stop offset="0" stop-color="#2d5a80"/>
-      <stop offset="0.55" stop-color="#16283d"/>
-      <stop offset="1" stop-color="#0a121c"/>
+      <stop offset="0" stop-color="#6e6e68"/>
+      <stop offset="0.55" stop-color="#2b2b29"/>
+      <stop offset="1" stop-color="#111111"/>
     </radialGradient>
     <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#081018"/>
-      <stop offset="1" stop-color="#04080c"/>
+      <stop offset="0" stop-color="#0a0a0a"/>
+      <stop offset="1" stop-color="#040404"/>
     </linearGradient>
     <linearGradient id="rim" x1="1" y1="0" x2="0" y2="0">
-      <stop offset="0" stop-color="#e0b45a" stop-opacity="0"/>
-      <stop offset="1" stop-color="#e0b45a" stop-opacity="0.85"/>
+      <stop offset="0" stop-color="#d4f53c" stop-opacity="0"/>
+      <stop offset="1" stop-color="#d4f53c" stop-opacity="0.85"/>
     </linearGradient>
   </defs>
   <rect width="480" height="360" fill="url(#bg)"/>
@@ -27,5 +27,5 @@
   <path d="M186 120c-6 20-6 44 2 64" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
   <path d="M150 276c-24 18-40 46-46 84" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
   <!-- ユニフォームの番号 -->
-  <text x="240" y="336" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#e0b45a" fill-opacity="0.55">10</text>
+  <text x="240" y="336" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#d4f53c" fill-opacity="0.55">10</text>
 </svg>

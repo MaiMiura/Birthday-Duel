@@ -128,6 +128,7 @@ SELECT ?person ?dob ?cal ?jaTitle ?sitelinks WHERE {
 export interface PersonDetail {
   name: string;
   nameLang: string;
+  nameRoman: string | null;
   description: string | null;
   imageFile: string | null;
   occupations: string[];
@@ -166,6 +167,8 @@ SELECT ?person ?ja ?en ?mul ?desc ?image WHERE {
       details.set(id, {
         name,
         nameLang,
+        // 英語ラベルがラテン文字だけなら、ローマ字の名前として使う（"Taylor Swift" など）
+        nameRoman: r.en && /^[\p{Script=Latin}\s.'’-]+$/u.test(r.en) ? r.en : null,
         description: r.desc ?? null,
         imageFile: r.image ? decodeURIComponent(r.image.slice(r.image.lastIndexOf("/") + 1)) : null,
         occupations: [],

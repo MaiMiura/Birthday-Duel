@@ -23,7 +23,7 @@ import BirthdayForm from "./BirthdayForm";
 import DuelView from "./DuelView";
 import HandView, { type Tab } from "./HandView";
 import SettingsView from "./SettingsView";
-import { BigButton, ModeBadge } from "./ui";
+import { GhostButton, LimeButton, TopBar } from "./ui";
 
 type Load =
   | { status: "idle" }
@@ -66,6 +66,8 @@ export default function Game() {
   const [tab, setTab] = useState<Tab>("entertainment");
   const [detail, setDetail] = useState<Person | null>(null);
   const [retrying, setRetrying] = useState(false);
+  // 設定画面を閉じたときに戻る画面
+  const [settingsFrom, setSettingsFrom] = useState<Screen>("hand");
   const requestId = useRef(0);
 
   const loadHand = useCallback(
@@ -195,21 +197,12 @@ export default function Game() {
   }
 
   let view: React.ReactNode;
-  if (screen === "birthday" || !birthday) {
-    view = (
-      <BirthdayForm
-        initial={birthday}
-        demo={demo}
-        onSubmit={submitBirthday}
-        onToggleDemo={changeDemo}
-        onCancel={birthday ? () => setScreen("hand") : undefined}
-      />
-    );
-  } else if (screen === "settings") {
+  if (screen === "settings") {
     view = (
       <SettingsView
         settings={settings}
         demo={demo}
+        hasBirthday={birthday !== null}
         onChange={updateSettings}
         onToggleDemo={changeDemo}
         onResetBirthday={() => {
@@ -219,7 +212,21 @@ export default function Game() {
           setLoad({ status: "idle" });
           setScreen("birthday");
         }}
-        onBack={() => setScreen("hand")}
+        onBack={() => setScreen(birthday ? settingsFrom : "birthday")}
+      />
+    );
+  } else if (screen === "birthday" || !birthday) {
+    view = (
+      <BirthdayForm
+        initial={birthday}
+        demo={demo}
+        onSubmit={submitBirthday}
+        onToggleDemo={changeDemo}
+        onCancel={birthday ? () => setScreen("hand") : undefined}
+        onMenu={() => {
+          setSettingsFrom("birthday");
+          setScreen("settings");
+        }}
       />
     );
   } else if (screen === "duel" && selection) {
@@ -260,7 +267,10 @@ export default function Game() {
           setDetail(null);
         }}
         onChangeBirthday={() => setScreen("birthday")}
-        onSettings={() => setScreen("settings")}
+        onSettings={() => {
+          setSettingsFrom("hand");
+          setScreen("settings");
+        }}
         onRetryScores={retryScores}
       />
     );
@@ -273,6 +283,10 @@ export default function Game() {
         onRetry={() => loadHand(birthday, demo, settings)}
         onChangeBirthday={() => setScreen("birthday")}
         onDemo={tryDemo}
+        onMenu={() => {
+          setSettingsFrom("hand");
+          setScreen("settings");
+        }}
       />
     );
   }
@@ -287,6 +301,7 @@ function StatusScreen({
   onRetry,
   onChangeBirthday,
   onDemo,
+  onMenu,
 }: {
   load: Load;
   birthday: Birthday;
@@ -294,57 +309,61 @@ function StatusScreen({
   onRetry: () => void;
   onChangeBirthday: () => void;
   onDemo: (b?: Birthday) => void;
+  onMenu: () => void;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4 py-8 text-center">
-      <div className="flex justify-center">
-        <ModeBadge demo={demo} />
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-3 pb-8">
+      <TopBar demo={demo} onMenu={onMenu} />
+      <div className="flex flex-1 flex-col justify-center gap-4 text-center">
+        <p className="font-display text-5xl">
+          <span className="slant lime-mark px-1">
+            {birthday.month}
+            <span className="font-sans text-2xl font-black">月</span>
+            {birthday.day}
+            <span className="font-sans text-2xl font-black">日</span>
+          </span>
+        </p>
+
+        {(load.status === "loading" || load.status === "idle") && (
+          <div role="status" className="space-y-4">
+            <div aria-hidden className="mx-auto size-12 animate-spin rounded-full border-4 border-line border-t-ink" />
+            <p className="text-xl font-black">手札を集めています…</p>
+            <p className="text-sm text-ink-soft">
+              Wikidata と Wikipedia から人物と閲覧数を集めています。この誕生日を初めて開くときは 1 分ほどかかることがあります。
+            </p>
+          </div>
+        )}
+
+        {load.status === "error" && (
+          <div role="alert" className="space-y-3">
+            <p className="text-xs font-black tracking-[0.3em] text-ink-soft">{load.kind === "timeout" ? "TIMEOUT" : "ERROR"}</p>
+            <p className="text-2xl font-black">
+              {load.kind === "timeout" ? "時間切れになりました" : "人物データを取得できませんでした"}
+            </p>
+            <p className="text-sm">{load.message}</p>
+            {load.detail && <p className="text-xs break-all text-ink-soft">詳細: {load.detail}</p>}
+            <p className="text-xs text-ink-soft">少し待ってから再試行してください。デモモードには自動で切り替わりません。</p>
+            <LimeButton onClick={onRetry}>再試行</LimeButton>
+            <GhostButton onClick={() => onDemo()}>デモモードで試す</GhostButton>
+          </div>
+        )}
+
+        {load.status === "no-demo" && (
+          <div className="space-y-3">
+            <p className="text-2xl font-black">この誕生日のデモデータはありません</p>
+            <p className="text-sm text-ink-soft">デモモードでは、次の誕生日で試せます。</p>
+            {DEMO_BIRTHDAYS.map((b) => (
+              <GhostButton key={birthdayKey(b)} onClick={() => onDemo(b)}>
+                {formatBirthday(b)}で試す
+              </GhostButton>
+            ))}
+          </div>
+        )}
+
+        <button type="button" onClick={onChangeBirthday} className="min-h-11 text-sm font-bold text-ink-soft underline">
+          誕生日を変える
+        </button>
       </div>
-      <p className="text-3xl font-bold text-gold">{formatBirthday(birthday)}</p>
-
-      {(load.status === "loading" || load.status === "idle") && (
-        <div role="status" className="space-y-4">
-          <div aria-hidden className="mx-auto size-12 animate-spin rounded-full border-4 border-line border-t-gold" />
-          <p className="text-xl font-bold">手札を集めています…</p>
-          <p className="text-sm text-ink-soft">
-            Wikidata と Wikipedia から人物と閲覧数を集めています。この誕生日を初めて開くときは 1 分ほどかかることがあります。
-          </p>
-        </div>
-      )}
-
-      {load.status === "error" && (
-        <div role="alert" className="space-y-3">
-          <p className="text-xs font-bold tracking-[0.3em] text-gold">{load.kind === "timeout" ? "TIMEOUT" : "ERROR"}</p>
-          <p className="text-2xl font-bold">
-            {load.kind === "timeout" ? "時間切れになりました" : "人物データを取得できませんでした"}
-          </p>
-          <p>{load.message}</p>
-          {load.detail && <p className="text-xs break-all text-ink-soft">詳細: {load.detail}</p>}
-          <p className="text-sm text-ink-soft">
-            少し待ってから再試行してください。デモモードには自動で切り替わりません。
-          </p>
-          <BigButton onClick={onRetry}>再試行</BigButton>
-          <BigButton variant="secondary" onClick={() => onDemo()}>
-            デモモードで試す
-          </BigButton>
-        </div>
-      )}
-
-      {load.status === "no-demo" && (
-        <div className="space-y-3">
-          <p className="text-2xl font-bold">この誕生日のデモデータはありません</p>
-          <p className="text-ink-soft">デモモードでは、次の誕生日で試せます。</p>
-          {DEMO_BIRTHDAYS.map((b) => (
-            <BigButton key={birthdayKey(b)} variant="secondary" onClick={() => onDemo(b)}>
-              {formatBirthday(b)}で試す
-            </BigButton>
-          ))}
-        </div>
-      )}
-
-      <BigButton variant="secondary" onClick={onChangeBirthday}>
-        誕生日を変える
-      </BigButton>
     </main>
   );
 }

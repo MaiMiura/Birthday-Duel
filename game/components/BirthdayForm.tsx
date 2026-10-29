@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { daysInMonth, type Birthday } from "@/lib/birthday";
-import { DEMO_BIRTHDAYS } from "@/lib/demo";
-import { BigButton, ModeBadge } from "./ui";
+import { DEMO_BIRTHDAYS, getDemoHand } from "@/lib/demo";
+import type { Person } from "@/lib/types";
+import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar } from "./ui";
+
+// 1 枚目の画面に飾る見本のカード（デモ用の架空の人物）
+const SAMPLE = ["D1029-6", "D1029-1", "D1029-3"].flatMap((id) =>
+  (getDemoHand(10, 29)?.people ?? []).filter((p) => p.id === id),
+);
 
 export default function BirthdayForm({
   initial,
@@ -11,117 +17,188 @@ export default function BirthdayForm({
   onSubmit,
   onToggleDemo,
   onCancel,
+  onMenu,
 }: {
   initial: Birthday | null;
   demo: boolean;
   onSubmit: (b: Birthday) => void;
   onToggleDemo: (on: boolean) => void;
   onCancel?: () => void;
+  onMenu: () => void;
 }) {
   const [month, setMonth] = useState(initial?.month ?? 0);
   const [day, setDay] = useState(initial?.day ?? 0);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const maxDay = month ? daysInMonth(month) : 31;
   const valid = month > 0 && day > 0 && day <= maxDay;
-  const selectClass =
-    "min-h-14 w-full rounded-xl border border-line bg-surface-2 px-3 text-2xl font-bold text-ink focus:border-gold focus:outline-none";
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 py-8">
-      <header className="text-center">
-        <div className="mb-6 flex justify-center">
-          <ModeBadge demo={demo} />
-        </div>
-        <p className="text-xs font-bold tracking-[0.4em] text-gold">BIRTHDAY DUEL</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-wide">バースデー・デュエル</h1>
-        <p className="mt-4 text-lg leading-relaxed">
-          同じ誕生日の有名人で、<span className="text-gold">知名度勝負</span>。
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          誕生日（月日）を入れると、その日に生まれた人物があなたの手札になります。生まれ年や名前は不要です。
-        </p>
-      </header>
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col overflow-hidden px-5 pt-3 pb-8">
+      {/* 右下へ走るライムの帯 */}
+      <span aria-hidden className="lime-slash pointer-events-none absolute top-52 -right-24 h-80 w-80 opacity-80" />
+
+      <TopBar demo={demo} onBack={onCancel} logo="md" onMenu={onMenu} />
+
+      <h1 className="relative mt-6 text-[2.6rem] leading-[1.15] font-black">
+        <span className="slant">誕生日が、</span>
+        <br />
+        <span className="slant">切り札になる。</span>
+      </h1>
+      <p className="relative mt-3 -rotate-3 text-sm font-bold text-ink-soft">
+        同じ誕生日の有名人が、あなたの手札に。
+        <br />
+        知名度で勝負しよう。
+      </p>
+
+      <div aria-hidden className="relative mx-auto mt-6 h-52 w-full max-w-sm">
+        {SAMPLE.map((p, i) => (
+          <FanCard key={p.id} person={p} index={i} />
+        ))}
+      </div>
 
       <form
-        className="rounded-2xl border border-line bg-surface p-5"
+        className="relative mt-6"
         onSubmit={(e) => {
           e.preventDefault();
           if (valid) onSubmit({ month, day });
         }}
       >
-        <fieldset>
-          <legend className="mb-3 text-sm font-bold tracking-wide text-ink-soft">あなたの誕生日</legend>
-          <div className="flex items-center gap-2 text-lg">
-            <label className="flex flex-1 items-center gap-2">
-              <select
-                aria-label="月"
-                value={month}
-                onChange={(e) => {
-                  const m = Number(e.target.value);
-                  setMonth(m);
-                  if (day > daysInMonth(m)) setDay(0);
-                }}
-                className={selectClass}
-              >
-                <option value={0}>--</option>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </option>
-                ))}
-              </select>
-              月
-            </label>
-            <label className="flex flex-1 items-center gap-2">
-              <select aria-label="日" value={day} onChange={(e) => setDay(Number(e.target.value))} className={selectClass}>
-                <option value={0}>--</option>
-                {Array.from({ length: maxDay }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </option>
-                ))}
-              </select>
-              日
-            </label>
-          </div>
-          {month === 2 && <p className="mt-2 text-sm text-ink-soft">2月29日も選べます。</p>}
-        </fieldset>
-        <BigButton className="mt-5" disabled={!valid} onClick={() => valid && onSubmit({ month, day })}>
+        <p className="text-sm font-bold text-ink-soft">まずは、あなたの誕生日を教えてください。</p>
+        <div className="mt-3 flex gap-3">
+          <DateSelect label="月" value={month} max={12} onChange={(m) => {
+            setMonth(m);
+            if (day > daysInMonth(m)) setDay(0);
+          }} />
+          <DateSelect label="日" value={day} max={maxDay} onChange={setDay} />
+        </div>
+        {month === 2 && <p className="mt-2 text-xs text-ink-soft">2月29日も選べます。</p>}
+        <LimeButton className="mt-5" disabled={!valid} onClick={() => valid && onSubmit({ month, day })}>
           手札を見る
-        </BigButton>
-        {onCancel && (
-          <BigButton className="mt-3" variant="secondary" onClick={onCancel}>
-            戻る
-          </BigButton>
-        )}
+        </LimeButton>
       </form>
 
-      <section className="rounded-2xl border border-line p-4 text-sm leading-relaxed text-ink-soft">
-        <h2 className="mb-2 text-xs font-bold tracking-[0.3em] text-gold">HOUSE RULES</h2>
-        <ol className="list-decimal space-y-1 pl-5 marker:text-gold">
-          <li>お題のカテゴリーを決める（例: 「次は音楽」）</li>
-          <li>各自、手札から 1 枚選んで伏せる</li>
-          <li>「せーの」で一斉に公開</li>
-          <li>知名度スコア（Wikipedia の閲覧数）が一番高い人の勝ち</li>
-        </ol>
-        <p className="mt-2">負けた人の罰ゲームは、その場で決めてください。</p>
-        <p className="mt-2 text-xs">誕生日はこの端末にだけ保存されます。1 台を回して使うときは、手札画面の「誕生日を変える」で切り替えられます。</p>
-      </section>
-
-      <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-dashed border-line p-4 text-sm">
-        <input
-          type="checkbox"
-          checked={demo}
-          onChange={(e) => onToggleDemo(e.target.checked)}
-          className="mt-0.5 size-5 shrink-0 accent-gold"
-        />
-        <span>
-          <span className="block font-bold">デモモードで試す</span>
-          <span className="block text-ink-soft">
-            架空の人物とデモ値で操作を確認できます。
-            {demo && ` デモデータがある誕生日: ${DEMO_BIRTHDAYS.map((b) => `${b.month}月${b.day}日`).join("・")}`}
-          </span>
+      <button
+        type="button"
+        onClick={() => setRulesOpen(true)}
+        className="relative mx-auto mt-4 flex min-h-11 items-center gap-2 text-sm font-bold"
+      >
+        <span aria-hidden className="flex size-6 items-center justify-center rounded-full bg-ink-soft text-xs text-white">
+          ?
         </span>
-      </label>
+        遊び方
+      </button>
+
+      {rulesOpen && <RulesSheet demo={demo} onToggleDemo={onToggleDemo} onClose={() => setRulesOpen(false)} />}
     </main>
+  );
+}
+
+function DateSelect({
+  label,
+  value,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="relative flex min-h-16 flex-1 items-center rounded-2xl bg-surface px-4 shadow-sm">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full appearance-none bg-transparent font-display text-4xl outline-none"
+      >
+        <option value={0}>--</option>
+        {Array.from({ length: max }, (_, i) => (
+          <option key={i + 1} value={i + 1}>
+            {i + 1}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden className="pointer-events-none absolute left-16 text-sm font-bold">
+        {label}
+      </span>
+      <span aria-hidden className="pointer-events-none absolute right-4 text-ink-soft">
+        ⌄
+      </span>
+    </label>
+  );
+}
+
+function FanCard({ person, index }: { person: Person; index: number }) {
+  const pos = [
+    "left-0 top-6 -rotate-8 w-[34%]",
+    "left-1/2 -translate-x-1/2 top-0 rotate-2 z-10 w-[40%]",
+    "right-0 top-6 rotate-8 w-[34%]",
+  ][index];
+  return (
+    <div className={`absolute overflow-hidden rounded-xl bg-surface p-1.5 shadow-lg ${pos}`}>
+      <div className="relative">
+        <CardVisual person={person} className="aspect-[3/4] w-full rounded-lg" />
+        <span className="absolute top-1 right-1 rounded bg-black/70 px-1 text-[0.55rem] font-bold text-white">
+          DEMO
+        </span>
+        {index === 1 && <Signature name={person.nameRoman} className="bottom-3 left-2 text-2xl" />}
+      </div>
+      <p className="mt-1 truncate text-xs font-black">{person.name}</p>
+      {person.categories[0] && <CategoryLabel id={person.categories[0]} />}
+    </div>
+  );
+}
+
+function RulesSheet({
+  demo,
+  onToggleDemo,
+  onClose,
+}: {
+  demo: boolean;
+  onToggleDemo: (on: boolean) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="遊び方"
+        onClick={(e) => e.stopPropagation()}
+        className="sheet-up w-full max-w-md rounded-t-3xl bg-surface p-6 sm:rounded-3xl"
+      >
+        <h2 className="text-2xl font-black">
+          <span className="slant lime-mark">遊び方</span>
+        </h2>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+          <li>それぞれのスマホで、自分の誕生日を入れる</li>
+          <li>お題のカテゴリーを決める（例: 「次は音楽」）</li>
+          <li>手札から 1 枚選んで、伏せて待つ</li>
+          <li>「せーの」で一斉に公開</li>
+          <li>知名度スコア（日本語版 Wikipedia の閲覧数）が一番高い人の勝ち</li>
+        </ol>
+        <p className="mt-3 text-sm text-ink-soft">負けた人の罰ゲームは、その場で決めてください。誕生日はこの端末にだけ保存されます。</p>
+
+        <label className="mt-5 flex min-h-12 items-start gap-3 rounded-2xl bg-paper p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={demo}
+            onChange={(e) => onToggleDemo(e.target.checked)}
+            className="mt-0.5 size-5 shrink-0 accent-ink"
+          />
+          <span>
+            <span className="block font-bold">デモモードで試す</span>
+            <span className="block text-ink-soft">
+              架空の人物とデモ値で操作を確認できます（デモデータがある誕生日:{" "}
+              {DEMO_BIRTHDAYS.map((b) => `${b.month}月${b.day}日`).join("・")}）
+            </span>
+          </span>
+        </label>
+        <GhostButton className="mt-4" onClick={onClose}>
+          閉じる
+        </GhostButton>
+      </div>
+    </div>
   );
 }
