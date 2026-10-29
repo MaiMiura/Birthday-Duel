@@ -1,1 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect width="240" height="240" fill="#dff3ff"/><circle cx="120" cy="92" r="42" fill="#f1c27d"/><path d="M78 84c4-26 22-40 42-40s38 14 42 40c-12-8-26-12-42-12s-30 4-42 12z" fill="#222"/><circle cx="105" cy="94" r="5" fill="#222"/><circle cx="135" cy="94" r="5" fill="#222"/><path d="M106 112q14 12 28 0" stroke="#222" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M58 240c0-46 28-78 62-78s62 32 62 78z" fill="#1e88e5"/><text x="104" y="222" font-size="36" fill="#fff" font-weight="bold">10</text><circle cx="196" cy="196" r="24" fill="#fff" stroke="#222" stroke-width="3"/><path d="M196 178l10 8-4 12h-12l-4-12z" fill="#222"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
+      <stop offset="0" stop-color="#2d5a80"/>
+      <stop offset="0.55" stop-color="#16283d"/>
+      <stop offset="1" stop-color="#0a121c"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#081018"/>
+      <stop offset="1" stop-color="#04080c"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#e0b45a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#e0b45a" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="360" fill="url(#bg)"/>
+  <!-- スタジアムの照明 -->
+  <g fill="#fff" opacity="0.18">
+    <circle cx="70" cy="46" r="5"/><circle cx="92" cy="46" r="5"/><circle cx="114" cy="46" r="5"/>
+    <circle cx="366" cy="46" r="5"/><circle cx="388" cy="46" r="5"/><circle cx="410" cy="46" r="5"/>
+  </g>
+  <!-- 短髪の人物のシルエット -->
+  <ellipse cx="240" cy="148" rx="56" ry="66" fill="url(#body)"/>
+  <path d="M206 204h68l6 44h-80z" fill="url(#body)"/>
+  <path d="M96 360c4-70 60-112 144-112s140 42 144 112z" fill="url(#body)"/>
+  <path d="M186 120c-6 20-6 44 2 64" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M150 276c-24 18-40 46-46 84" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+  <!-- ユニフォームの番号 -->
+  <text x="240" y="336" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#e0b45a" fill-opacity="0.55">10</text>
+</svg>

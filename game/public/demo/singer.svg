@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect width="240" height="240" fill="#ffe3ec"/><circle cx="120" cy="96" r="44" fill="#ffcfa8"/><path d="M76 92c0-32 22-50 44-50s44 18 44 50c-10-14-26-22-44-22s-34 8-44 22z" fill="#5b3a29"/><circle cx="104" cy="98" r="5" fill="#333"/><circle cx="136" cy="98" r="5" fill="#333"/><path d="M108 116q12 10 24 0" stroke="#c0392b" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M60 240c0-46 27-76 60-76s60 30 60 76z" fill="#ff6f91"/><rect x="150" y="150" width="12" height="40" rx="6" fill="#555" transform="rotate(-20 156 170)"/><circle cx="168" cy="146" r="12" fill="#888"/><text x="200" y="60" font-size="34">♪</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#5b3a6e"/>
+      <stop offset="0.55" stop-color="#2a1d3a"/>
+      <stop offset="1" stop-color="#120d1a"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d0912"/>
+      <stop offset="1" stop-color="#07050a"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e0b45a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#e0b45a" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="360" fill="url(#bg)"/>
+  <circle cx="240" cy="120" r="150" fill="#e0b45a" opacity="0.06"/>
+  <!-- 長い髪の人物のシルエット -->
+  <path d="M240 72c-40 0-66 30-66 72 0 30 6 58 2 88-3 22-14 36-30 48h188c-16-12-27-26-30-48-4-30 2-58 2-88 0-42-26-72-66-72z" fill="url(#body)"/>
+  <path d="M120 360c6-62 52-96 120-96s114 34 120 96z" fill="url(#body)"/>
+  <path d="M306 150c2 30-4 58 0 84 3 18 12 30 26 40" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M332 300c14 16 24 36 28 60" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+  <!-- スタンドマイク -->
+  <line x1="300" y1="360" x2="282" y2="236" stroke="#2c2236" stroke-width="6" stroke-linecap="round"/>
+  <rect x="268" y="206" width="22" height="38" rx="11" transform="rotate(-8 279 225)" fill="#3a2f46" stroke="#e0b45a" stroke-opacity="0.6" stroke-width="2"/>
+</svg>
