@@ -43,24 +43,27 @@ def occupation_clause(occupation):
 
 def build_query(month, day, occupation, limit, lang):
     return f"""
-SELECT ?person ?personLabel ?personDescription ?dob ?sitelinks
+SELECT ?person ?personLabel ?personDescription (MIN(?birth) AS ?dob) ?sitelinks
        (GROUP_CONCAT(DISTINCT ?occLabel; separator=" / ") AS ?occupations)
 WHERE {{
   {occupation_clause(occupation)}
   ?person wdt:P106 ?occ ;
           wdt:P31 wd:Q5 ;
-          p:P569/psv:P569 ?dobNode ;
+          p:P569 ?dobStatement ;
           wikibase:sitelinks ?sitelinks .
-  ?dobNode wikibase:timeValue ?dob ;
+  ?dobStatement psv:P569 ?dobNode ;
+                wikibase:rank ?dobRank .
+  FILTER(?dobRank != wikibase:DeprecatedRank)
+  ?dobNode wikibase:timeValue ?birth ;
            wikibase:timePrecision 11 .
-  FILTER(MONTH(?dob) = {month} && DAY(?dob) = {day})
+  FILTER(MONTH(?birth) = {month} && DAY(?birth) = {day})
   SERVICE wikibase:label {{
     bd:serviceParam wikibase:language "{lang},en,mul" .
     ?person rdfs:label ?personLabel ; schema:description ?personDescription .
     ?occ rdfs:label ?occLabel .
   }}
 }}
-GROUP BY ?person ?personLabel ?personDescription ?dob ?sitelinks
+GROUP BY ?person ?personLabel ?personDescription ?sitelinks
 ORDER BY DESC(?sitelinks)
 LIMIT {limit}
 """
