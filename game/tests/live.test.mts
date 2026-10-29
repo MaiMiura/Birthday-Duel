@@ -12,7 +12,7 @@ const { fetchViews } = await import("../lib/server/pageviews");
 const { toPersonImage } = await import("../lib/server/images");
 const { getHand, retryFailedScores } = await import("../lib/server/hand");
 const { clearMemoryCache } = await import("../lib/server/cache");
-const { birthDateLiterals } = await import("../lib/server/wikidata");
+const { parseBirths } = await import("../lib/server/birthpage");
 
 type Handler = (url: URL, body: string) => Response | Promise<Response>;
 const realFetch = globalThis.fetch;
@@ -30,15 +30,6 @@ function mockFetch(handler: Handler) {
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
-const bindings = (rows: Record<string, string>[]) =>
-  json({
-    results: {
-      bindings: rows.map((r) =>
-        Object.fromEntries(Object.entries(r).map(([k, v]) => [k, { type: "literal", value: v }])),
-      ),
-    },
-  });
-const E = (id: string) => `http://www.wikidata.org/entity/${id}`;
 const period = { start: "2025-10", end: "2026-09" };
 const NOW = new Date("2026-10-29T03:00:00Z");
 
@@ -74,35 +65,84 @@ describe("閲覧数", () => {
   });
 });
 
-describe("途中で切れた応答", () => {
+describe("途中で切れた応答・時間切れ", () => {
   it("JSON が壊れていたら、分かるエラーにする（1 回は再試行する）", async () => {
     const { fetchJson } = await import("../lib/server/http");
     let count = 0;
     mockFetch(() => {
       count++;
-      return new Response('{"head":{"vars":["person"]},"results":{"bindings":[{"person":', { status: 200 });
+      return new Response('{"query":{"pages":[{"title":', { status: 200 });
     });
-    await assert.rejects(fetchJson("https://query.wikidata.org/sparql", { timeoutMs: 1000 }), /途中で切れました/);
+    await assert.rejects(fetchJson("https://ja.wikipedia.org/w/api.php", { timeoutMs: 1000 }), /途中で切れました/);
     assert.equal(count, 2);
   });
-  it("時間切れの印があれば時間切れとして扱う", async () => {
+  it("本文を読んでいる途中の時間切れも、時間切れとして扱う", async () => {
     const { fetchJson, TimeoutError } = await import("../lib/server/http");
-    mockFetch(() => new Response('{"results":{"bindings":[ java.util.concurrent.TimeoutException', { status: 200 }));
-    await assert.rejects(fetchJson("https://query.wikidata.org/sparql", { timeoutMs: 1000, retries: 0 }), TimeoutError);
+    mockFetch(() => {
+      const body = new ReadableStream({
+        pull(controller) {
+          controller.error(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+        },
+      });
+      return new Response(body, { status: 200 });
+    });
+    await assert.rejects(fetchJson("https://ja.wikipedia.org/w/api.php", { timeoutMs: 1000, retries: 0 }), TimeoutError);
   });
 });
 
-describe("誕生日の日付リテラル", () => {
-  it("1 年から今年まで、4 桁にそろえて作る", () => {
-    const list = birthDateLiterals(10, 29, 2026);
-    assert.equal(list.length, 2026);
-    assert.equal(list[0], '"0001-10-29T00:00:00Z"^^xsd:dateTime');
-    assert.equal(list.at(-1), '"2026-10-29T00:00:00Z"^^xsd:dateTime');
+// 日本語版 Wikipedia の日付ページの書き方をまねたもの
+const BIRTH_PAGE = [
+  "'''2月29日'''（にがつにじゅうくにち）は、[[グレゴリオ暦]]で年始から60日目にあたる。",
+  "",
+  "== できごと ==",
+  "* [[1940年]] - [[できごとの記事]]、何かが起きる",
+  "",
+  "== 誕生日 ==",
+  "=== 人物 ===",
+  "<!-- 生年順に並べる -->",
+  "* [[紀元前100年]] - [[古代の 人]]、哲学者（+ [[紀元前40年]]）",
+  "* [[天文 (元号)|天文]]11年（[[1600年]]） - [[昔の 王]]、[[君主]]",
+  "* [[1950年]] - [[作家 (小説家)|作家]]、[[小説家]]<ref>{{Cite web|title=出典}}</ref>",
+  "* [[1990年]]",
+  "** [[歌う 人]]、'''[[歌手]]'''（[[架空のバンド]]）",
+  "** [[架空のバンド]]、ロックバンド",
+  "* [[1992年]] - [[歌う人 (別名)|歌う人]]、歌手",
+  "* 生年不詳 - [[ファイル:Example.jpg]] [[年のない 人]]、俳優",
+  "* [[2001年]] - 赤リンクの人、俳優",
+  "* [[2002年]] - [[記事のない 人]]、モデル（† [[2020年]]）",
+  "",
+  "== 誕生日（フィクション） ==",
+  "* [[2000年]] - [[架空の キャラクター]]、主人公",
+  "",
+  "== 忌日 ==",
+  "* [[1999年]] - [[亡くなった 人]]",
+].join("\n");
+
+describe("日付ページの誕生日の読み取り", () => {
+  const births = parseBirths(BIRTH_PAGE);
+  const byTitle = (t: string) => births.find((b) => b.title === t);
+
+  it("「誕生日」の節だけを読む（できごと・フィクション・忌日は入れない）", () => {
+    assert.ok(!byTitle("できごとの記事"));
+    assert.ok(!byTitle("架空の キャラクター"));
+    assert.ok(!byTitle("亡くなった 人"));
   });
-  it("2月29日はうるう年だけ", () => {
-    const list = birthDateLiterals(2, 29, 2026);
-    assert.ok(list.includes('"2024-02-29T00:00:00Z"^^xsd:dateTime'));
-    assert.ok(!list.some((l) => l.startsWith('"2023-')));
+  it("年・人物・説明を読み、没年や出典は説明に入れない", () => {
+    assert.deepEqual(byTitle("古代の 人"), { title: "古代の 人", year: -100, note: "哲学者" });
+    assert.deepEqual(byTitle("作家 (小説家)"), { title: "作家 (小説家)", year: 1950, note: "小説家" });
+    assert.deepEqual(byTitle("記事のない 人"), { title: "記事のない 人", year: 2002, note: "モデル" });
+  });
+  it("和暦が先にあっても、西暦のリンクを年として使う", () => {
+    assert.equal(byTitle("昔の 王")?.year, 1600);
+  });
+  it("入れ子の行は親の行の年を使う", () => {
+    assert.deepEqual(byTitle("歌う 人"), { title: "歌う 人", year: 1990, note: "歌手（架空のバンド）" });
+    assert.equal(byTitle("架空のバンド")?.year, 1990);
+  });
+  it("年が分からない行・リンクのない人・ファイルは扱いを分ける", () => {
+    assert.equal(byTitle("年のない 人")?.year ?? null, null);
+    assert.ok(!births.some((b) => b.title.startsWith("ファイル:")));
+    assert.ok(!births.some((b) => b.note?.includes("赤リンク")));
   });
 });
 
@@ -137,49 +177,91 @@ describe("画像のライセンス", () => {
 
 describe("手札の組み立て（モック）", () => {
   let pageviewsFail = true;
-  let sparqlCalls = 0;
-  let dayQueries: string[] = [];
+  let pageReads = 0;
+
+  // Wikidata の項目（人物と職業）
+  const time = (t: string, julian = false) => ({
+    rank: "normal",
+    mainsnak: {
+      datavalue: {
+        value: {
+          time: t,
+          precision: 11,
+          calendarmodel: `http://www.wikidata.org/entity/${julian ? "Q1985786" : "Q1985727"}`,
+        },
+      },
+    },
+  });
+  const item = (id: string, rank = "normal") => ({ rank, mainsnak: { datavalue: { value: { id } } } });
+  const ENTITIES: Record<string, object> = {
+    Q1: {
+      id: "Q1",
+      labels: { ja: { value: "歌う人" } },
+      descriptions: { ja: { value: "日本の歌手" } },
+      claims: {
+        P31: [item("Q5")],
+        P106: [item("Q177220")],
+        P18: [{ rank: "normal", mainsnak: { datavalue: { value: "Singer A.jpg" } } }],
+        P569: [time("+1990-02-29T00:00:00Z")],
+      },
+    },
+    Q2: {
+      id: "Q2",
+      labels: { en: { value: "Old King" } },
+      claims: { P31: [item("Q5")], P106: [item("Q116")], P569: [time("+1600-02-19T00:00:00Z", true)] },
+    },
+    Q3: {
+      id: "Q3",
+      labels: { ja: { value: "作家" }, en: { value: "Sakka" } },
+      claims: { P31: [item("Q5")], P106: [item("Q36180")], P569: [time("+1950-02-29T00:00:00Z")] },
+    },
+    Q4: { id: "Q4", labels: { ja: { value: "架空のバンド" } }, claims: { P31: [item("Q215380")] } },
+    Q5x: { id: "Q5x", labels: { ja: { value: "古代の人" } }, claims: { P31: [item("Q5")], P106: [item("Q4964182")] } },
+    // 職業（P279 で上位分類へ）
+    Q177220: { id: "Q177220", labels: { ja: { value: "歌手" } }, claims: { P279: [item("Q639669")] } },
+    Q639669: { id: "Q639669", labels: { ja: { value: "音楽家" } }, claims: { P279: [item("Q483501")] } },
+    Q483501: { id: "Q483501", labels: { ja: { value: "芸術家" } }, claims: {} },
+    Q116: { id: "Q116", labels: { ja: { value: "君主" } }, claims: {} },
+    Q36180: { id: "Q36180", labels: { ja: { value: "作家" } }, claims: { P279: [item("Q482980")] } },
+    Q482980: { id: "Q482980", labels: { ja: { value: "著述家" } }, claims: {} },
+    Q4964182: { id: "Q4964182", labels: { ja: { value: "哲学者" } }, claims: {} },
+  };
+  const PAGEPROPS: Record<string, string> = {
+    "歌う 人": "Q1",
+    "昔の 王": "Q2",
+    "作家 (小説家)": "Q3",
+    "架空のバンド": "Q4",
+    "古代の 人": "Q5x",
+  };
 
   beforeEach(() => {
     clearMemoryCache();
     pageviewsFail = true;
-    sparqlCalls = 0;
-    dayQueries = [];
-    mockFetch(async (url, body) => {
-      if (url.host === "query.wikidata.org") {
-        sparqlCalls++;
-        const q = new URLSearchParams(body).get("query") ?? "";
-        if (q.includes("wikibase:BestRank")) {
-          dayQueries.push(q);
-          return bindings([
-            { person: E("Q1"), dob: "1990-02-29T00:00:00Z", cal: E("Q1985331"), jaTitle: "歌う 人", sitelinks: "30" },
-            { person: E("Q1"), dob: "1992-02-29T00:00:00Z", cal: E("Q1985331"), jaTitle: "歌う 人", sitelinks: "30" },
-            { person: E("Q2"), dob: "1600-02-29T00:00:00Z", cal: E("Q1985786"), jaTitle: "昔の 王", sitelinks: "10" },
-            { person: E("Q3"), dob: "1950-02-29T00:00:00Z", cal: E("Q1985331"), jaTitle: "作家 (小説家)", sitelinks: "5" },
-          ]);
-        }
-        if (q.includes("schema:description")) {
-          return bindings([
-            { person: E("Q1"), ja: "歌う人", desc: "日本の歌手", image: "http://commons.wikimedia.org/wiki/Special:FilePath/Singer%20A.jpg" },
-            { person: E("Q2"), en: "Old King" },
-            { person: E("Q3") },
-          ]);
-        }
-        if (q.includes("wdt:P106")) {
-          return bindings([
-            { person: E("Q1"), occ: E("Q177220") },
-            { person: E("Q2"), occ: E("Q116") },
-            { person: E("Q3"), occ: E("Q36180") },
-          ]);
-        }
-        if (q.includes("wdt:P279*")) {
-          return bindings([
-            { occ: E("Q177220"), root: E("Q177220") },
-            { occ: E("Q177220"), root: E("Q639669") },
-            { occ: E("Q116"), root: E("Q116") },
-          ]);
-        }
-        return bindings([{ occ: E("Q177220"), ja: "歌手" }, { occ: E("Q116"), ja: "君主" }]);
+    pageReads = 0;
+    mockFetch(async (url) => {
+      const q = url.searchParams;
+      if (url.host === "ja.wikipedia.org" && q.get("action") === "parse") {
+        pageReads++;
+        assert.equal(q.get("page"), "2月29日");
+        return json({ parse: { wikitext: BIRTH_PAGE } });
+      }
+      if (url.host === "ja.wikipedia.org" && q.get("action") === "query") {
+        const titles = q.get("titles")!.split("|");
+        return json({
+          query: {
+            // 「歌う人 (別名)」は「歌う 人」へのリダイレクト
+            redirects: titles.includes("歌う人 (別名)") ? [{ from: "歌う人 (別名)", to: "歌う 人" }] : [],
+            pages: titles
+              .filter((t) => t !== "歌う人 (別名)")
+              .map((t) =>
+                PAGEPROPS[t] ? { title: t, pageprops: { wikibase_item: PAGEPROPS[t] } } : { title: t, missing: true },
+              ),
+          },
+        });
+      }
+      if (url.host === "www.wikidata.org") {
+        const ids = q.get("ids")!.split("|");
+        return json({ entities: Object.fromEntries(ids.map((id) => [id, ENTITIES[id] ?? { id, missing: "" }])) });
       }
       if (url.host === "commons.wikimedia.org") {
         return json({
@@ -210,45 +292,54 @@ describe("手札の組み立て（モック）", () => {
   it("人物・分類・画像・スコアがそろい、取得失敗は再試行で埋まる", async () => {
     const hand = await getHand(2, 29, NOW);
     assert.equal(hand.mode, "live");
-    // 年ごとの 2月29日 で引く（うるう年だけ）
-    const all = dayQueries.join("\n");
-    assert.ok(all.includes('"1992-02-29T00:00:00Z"^^xsd:dateTime'));
-    assert.ok(!all.includes("1991-02-29"));
-    assert.ok(!all.includes("1900-02-29")); // 100 で割り切れて 400 で割り切れない年はうるう年ではない
-    assert.ok(all.includes("2000-02-29"));
     assert.deepEqual(hand.period, { start: "2025-10", end: "2026-09" });
-    assert.equal(hand.people.length, 3); // Q1 の誕生日 2 つは 1 人にまとめる
+    const byId = (id: string) => hand.people.find((p) => p.id === id);
 
-    const [singer, king, writer] = hand.people;
+    // バンド（人間ではない）は除く。リダイレクト経由の重複は 1 人にまとめる。生まれ年の新しい順
+    assert.deepEqual(
+      hand.people.map((p) => p.id),
+      ["Q1", "Q3", "Q2", "Q5x"],
+    );
+
+    const singer = byId("Q1")!;
     assert.equal(singer.birthDate, "1990-02-29");
-    assert.deepEqual(singer.categories, ["music"]);
+    assert.deepEqual(singer.categories, ["music"]); // 歌手 → 音楽家 と上位分類をたどる
+    assert.deepEqual(singer.occupations, [{ id: "Q177220", label: "歌手" }]);
     assert.equal(singer.image?.artist, "Photographer");
+    assert.equal(singer.description, "日本の歌手");
+    assert.equal(singer.jaTitle, "歌う 人");
     assert.deepEqual(singer.score, { status: "ok", views: 42 });
 
-    assert.equal(king.name, "昔の 王"); // 日本語ラベルがなければ記事名
-    assert.equal(king.julian, true);
-    assert.equal(king.image, null);
+    const king = byId("Q2")!;
+    assert.equal(king.name, "Old King"); // 日本語ラベルがなければ英語
+    assert.equal(king.nameRoman, "Old King");
+    // Wikidata の日付（ユリウス暦で 2月19日）と月日が違うので、一覧の年とこの月日を使う
+    assert.equal(king.birthDate, "1600-02-29");
+    assert.equal(king.description, "君主"); // Wikidata に説明がなければ一覧の説明
+    assert.deepEqual(king.categories, ["history"]);
     assert.equal(king.score.status, "failed");
-    assert.equal(king.description, null); // 説明は作らない
 
-    assert.equal(writer.name, "作家"); // 記事名の括弧は除く
-    assert.deepEqual(writer.categories, []);
+    const writer = byId("Q3")!;
+    assert.deepEqual(writer.categories, []); // 作家はどのカテゴリーにも入れない
     assert.equal(writer.score.status, "not-fetched");
 
-    // 2 回目はキャッシュから（Wikidata に問い合わせない）
-    const before = sparqlCalls;
+    assert.equal(byId("Q5x")!.birthDate, "-0100-02-29");
+    assert.deepEqual(byId("Q5x")!.categories, ["knowledge"]);
+
+    // 2 回目はキャッシュから（Wikipedia に問い合わせない）
     await getHand(2, 29, NOW);
-    assert.equal(sparqlCalls, before);
+    assert.equal(pageReads, 1);
 
     pageviewsFail = false;
     const retried = await retryFailedScores(2, 29, NOW);
-    assert.deepEqual(retried.people[1].score, { status: "ok", views: 42 });
+    assert.deepEqual(retried.people.find((p) => p.id === "Q2")!.score, { status: "ok", views: 42 });
   });
 
   it("同時に開いても取得は 1 回", async () => {
-    const [a, b] = await Promise.all([getHand(3, 1, NOW), getHand(3, 1, NOW)]);
+    // 別の月（＝別の集計期間）にして、前のテストのキャッシュを使わないようにする
+    const later = new Date("2026-12-05T00:00:00Z");
+    const [a, b] = await Promise.all([getHand(2, 29, later), getHand(2, 29, later)]);
     assert.equal(a, b);
-    const queriesPerHand = Math.ceil(birthDateLiterals(3, 1, NOW.getUTCFullYear()).length / 300);
-    assert.equal(dayQueries.length, queriesPerHand);
+    assert.equal(pageReads, 1);
   });
 });

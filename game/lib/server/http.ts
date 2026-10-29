@@ -50,8 +50,18 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise
       throw new Error(`${new URL(url).host} に接続できません: ${cause?.message ?? err.message}`);
     }
     if (res.ok) {
-      // Wikidata Query Service は時間切れになると、応答の途中で打ち切ることがある（JSON が壊れる）
-      const text = await res.text();
+      // 応答の本文を読んでいる途中でも時間切れになりうる
+      let text: string;
+      try {
+        text = await res.text();
+      } catch (e) {
+        const err = e as Error;
+        if (err.name === "TimeoutError" || err.name === "AbortError") {
+          throw new TimeoutError(`timeout after ${opts.timeoutMs}ms: ${new URL(url).host}`);
+        }
+        throw err;
+      }
+      // 混雑していると、応答が途中で打ち切られることがある（JSON が壊れる）
       try {
         return JSON.parse(text) as T;
       } catch {

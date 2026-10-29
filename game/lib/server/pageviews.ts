@@ -41,7 +41,7 @@ export async function fetchViews(jaTitle: string, period: ScorePeriod): Promise<
 export async function fetchViewsMany(
   titles: string[],
   period: ScorePeriod,
-  concurrency = Number(process.env.PAGEVIEWS_CONCURRENCY ?? 8),
+  concurrency = Number(process.env.PAGEVIEWS_CONCURRENCY ?? 12),
 ): Promise<Score[]> {
   return mapLimit(titles, concurrency, (t) => fetchViews(t, period));
 }

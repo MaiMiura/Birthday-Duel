@@ -1,14 +1,16 @@
 // 誕生日 1 つ分の手札（実データ）を組み立てる。
-// 人物取得（wikidata）→ カテゴリー分類（classify）→ 画像（images）→ スコア（pageviews）の順。
+// 人物の一覧（Wikipedia の日付ページ）→ 人物の詳細（Wikidata）→ カテゴリー分類（classify）
+// → 画像（images）→ スコア（pageviews）の順。
 
 import { birthdayKey } from "../birthday";
 import { classify, sensitiveReason } from "../classify";
 import { periodKey, scorePeriod } from "../period";
 import type { Hand, Person } from "../types";
+import { fetchBirthEntries } from "./birthpage";
 import { readCache, writeCache } from "./cache";
 import { fetchImages } from "./images";
 import { fetchViewsMany } from "./pageviews";
-import { findPeopleBornOn, getOccupationInfo, getPersonDetails } from "./wikidata";
+import { getOccupationInfo, getPersonDetails, resolveTitles } from "./wikidata";
 
 export function cacheKey(month: number, day: number, now = new Date()) {
   return `${periodKey(scorePeriod(now))}/${birthdayKey({ month, day })}`;
@@ -18,42 +20,59 @@ export function jaWikipediaUrl(title: string) {
   return `https://ja.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
 }
 
+function formatYear(year: number) {
+  return year < 0 ? `-${String(-year).padStart(4, "0")}` : String(year).padStart(4, "0");
+}
+
 export async function buildHand(month: number, day: number, now = new Date()): Promise<Hand> {
   const period = scorePeriod(now);
-  const { rows, total } = await findPeopleBornOn(month, day, now);
-  const ids = rows.map((r) => r.id);
-  const details = await getPersonDetails(ids, new Map(rows.map((r) => [r.id, r.jaTitle])));
+  const mmdd = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const entries = await fetchBirthEntries(month, day);
+  const resolved = await resolveTitles(entries.map((e) => e.title));
+  const qids = [...new Set([...resolved.values()].map((r) => r.qid))];
+  const details = await getPersonDetails(qids);
   const occupationIds = [...new Set([...details.values()].flatMap((d) => d.occupations))];
   const { ancestors, labels } = occupationIds.length
     ? await getOccupationInfo(occupationIds)
     : { ancestors: new Map(), labels: new Map<string, string>() };
-  const images = await fetchImages(
-    [...details.values()].flatMap((d) => (d.imageFile ? [d.imageFile] : [])),
-  );
+  const images = await fetchImages([...details.values()].flatMap((d) => (d.imageFile ? [d.imageFile] : [])));
 
-  const people: Person[] = rows.map((r) => {
-    const d = details.get(r.id);
-    const occupations = d?.occupations ?? [];
-    const description = d?.description ?? null;
-    const categories = classify(occupations, ancestors);
-    return {
-      id: r.id,
-      name: d?.name ?? r.jaTitle,
-      nameLang: d?.nameLang ?? "ja",
-      nameRoman: d?.nameRoman ?? null,
+  const seen = new Set<string>();
+  const people: Person[] = [];
+  for (const entry of entries) {
+    const r = resolved.get(entry.title);
+    if (!r || seen.has(r.qid)) continue; // Wikidata の項目がない記事や、同じ人の重複は除く
+    const d = details.get(r.qid);
+    if (!d || !d.isHuman) continue;
+    seen.add(r.qid);
+
+    // 生年月日: Wikidata の日付が同じ月日ならそれを使い、違えば（旧暦・ユリウス暦の違いなど）
+    // 一覧に書かれた年とこの月日を使う
+    const claim = d.births.find((b) => b.month === month && b.day === day);
+    const birthDate = claim ? claim.date : entry.year !== null ? `${formatYear(entry.year)}-${mmdd}` : mmdd;
+    const description = d.description ?? entry.note;
+    const occupations = d.occupations;
+    people.push({
+      id: r.qid,
+      name: d.name ?? r.title.replace(/\s*[（(][^）)]*[）)]\s*$/, ""),
+      nameLang: d.name ? d.nameLang : "ja",
+      nameRoman: d.nameRoman,
       description,
-      birthDate: r.birthDate,
-      julian: r.julian,
+      birthDate,
+      julian: claim?.julian ?? false,
       occupations: occupations.map((id) => ({ id, label: labels.get(id) ?? id })),
-      categories,
+      categories: classify(occupations, ancestors),
       sensitive: sensitiveReason(occupations, description, ancestors),
-      jaTitle: r.jaTitle,
-      jaUrl: jaWikipediaUrl(r.jaTitle),
-      wikidataUrl: `https://www.wikidata.org/wiki/${r.id}`,
-      image: d?.imageFile ? (images.get(d.imageFile) ?? null) : null,
+      jaTitle: r.title,
+      jaUrl: jaWikipediaUrl(r.title),
+      wikidataUrl: `https://www.wikidata.org/wiki/${r.qid}`,
+      image: d.imageFile ? (images.get(d.imageFile) ?? null) : null,
       score: { status: "not-fetched" },
-    };
-  });
+    });
+  }
+  // 並び順は生まれ年の新しい順（知名度順に並べると、公開前にスコアの大小が分かってしまうため）
+  people.sort((a, b) => b.birthDate.localeCompare(a.birthDate, "en", { numeric: true }));
 
   // 勝負に使えるのはカテゴリーに入る人だけなので、その人たちのスコアを取る
   const scored = people.filter((p) => p.categories.length > 0 && p.jaTitle);
@@ -70,8 +89,8 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     period,
     fetchedAt: now.toISOString(),
     people,
-    truncated: total > rows.length,
-    totalFound: total,
+    truncated: false,
+    totalFound: people.length,
   };
 }
 

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       {
         error: timeout
           ? "人物データの取得に時間がかかりすぎました"
-          : "人物データ（Wikidata）を取得できませんでした",
+          : "人物データ（Wikipedia・Wikidata）を取得できませんでした",
         detail: (e as Error).message,
         kind: timeout ? "timeout" : "upstream",
       },
