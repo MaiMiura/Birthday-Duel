@@ -6,7 +6,7 @@ import { getDemoHand } from "@/lib/demo";
 import type { Person } from "@/lib/types";
 import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar } from "./ui";
 
-// 1 枚目の画面に飾る見本のカード（架空の人物。「見本」と表示する）
+// 1 枚目の画面に飾るカード（デモ用の架空の人物）
 const SAMPLE = ["D1029-6", "D1029-1", "D1029-3"].flatMap((id) =>
   (getDemoHand(10, 29)?.people ?? []).filter((p) => p.id === id),
 );
@@ -48,7 +48,8 @@ export default function BirthdayForm({
         知名度で勝負しよう。
       </p>
 
-      <div aria-hidden className="relative mx-auto mt-6 h-52 w-full max-w-sm">
+      {/* 中央のカード（幅 40%・写真 3:4 と名前）が収まるよう、高さは幅から決める */}
+      <div aria-hidden className="relative mx-auto mt-6 aspect-[10/7] w-full max-w-sm">
         {SAMPLE.map((p, i) => (
           <FanCard key={p.id} person={p} index={i} />
         ))}
@@ -137,9 +138,6 @@ function FanCard({ person, index }: { person: Person; index: number }) {
     <div className={`absolute overflow-hidden rounded-xl bg-surface p-1.5 shadow-lg ${pos}`}>
       <div className="relative">
         <CardVisual person={person} className="aspect-[3/4] w-full rounded-lg" />
-        <span className="absolute top-1 right-1 rounded bg-black/70 px-1 text-[0.55rem] font-bold text-white">
-          見本
-        </span>
         {index === 1 && <Signature name={person.nameRoman} className="bottom-3 left-2 text-2xl" />}
       </div>
       <p className="mt-1 truncate text-xs font-black">{person.name}</p>
