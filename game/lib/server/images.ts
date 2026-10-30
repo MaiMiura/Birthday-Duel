@@ -78,9 +78,9 @@ export async function fetchImages(files: string[]): Promise<Map<string, PersonIm
     });
     let data: CommonsResponse;
     try {
-      data = await fetchJson<CommonsResponse>(`${COMMONS_API}?${params}`, { timeoutMs: 20_000 });
+      data = await fetchJson<CommonsResponse>(`${COMMONS_API}?${params}`, { timeoutMs: 10_000, retries: 0 });
     } catch {
-      continue; // 画像は無くてもカードは成り立つので、失敗したら代替ビジュアルにする
+      continue; // 写真はなくてもカードは成り立つので、断られたら待たずに代替ビジュアルにする
     }
     const normalized = new Map((data.query?.normalized ?? []).map((n) => [n.to, n.from]));
     for (const page of data.query?.pages ?? []) {

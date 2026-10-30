@@ -27,8 +27,15 @@ function formatYear(year: number) {
 export async function buildHand(month: number, day: number, now = new Date()): Promise<Hand> {
   const period = scorePeriod(now);
   const mmdd = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const timings: Record<string, number> = {};
+  let lap = Date.now();
+  const mark = (name: string) => {
+    timings[name] = Date.now() - lap;
+    lap = Date.now();
+  };
 
   const entries = await fetchBirthEntries(month, day);
+  mark("page");
   // 混雑で取れなかった人数（その人だけ手札から抜ける）
   const report = { failed: 0 };
   const resolved = await resolveTitles(
@@ -37,11 +44,14 @@ export async function buildHand(month: number, day: number, now = new Date()): P
   );
   const qids = [...new Set([...resolved.values()].map((r) => r.qid))];
   const details = await getPersonDetails(qids, report);
+  mark("people");
   const occupationIds = [...new Set([...details.values()].flatMap((d) => d.occupations))];
   const { ancestors, labels } = occupationIds.length
     ? await getOccupationInfo(occupationIds)
     : { ancestors: new Map(), labels: new Map<string, string>() };
+  mark("occupations");
   const images = await fetchImages([...details.values()].flatMap((d) => (d.imageFile ? [d.imageFile] : [])));
+  mark("images");
 
   const seen = new Set<string>();
   const people: Person[] = [];
@@ -81,13 +91,9 @@ export async function buildHand(month: number, day: number, now = new Date()): P
   // 並び順は生まれ年の新しい順（知名度順に並べると、公開前にスコアの大小が分かってしまうため）
   people.sort((a, b) => b.birthDate.localeCompare(a.birthDate, "en", { numeric: true }));
 
-  // 勝負に使えるのはカテゴリーに入る人だけなので、その人たちのスコアを取る
-  const scored = people.filter((p) => p.categories.length > 0 && p.jaTitle);
-  const scores = await fetchViewsMany(
-    scored.map((p) => p.jaTitle!),
-    period,
-  );
-  scored.forEach((p, i) => (p.score = scores[i]));
+  // 閲覧数は、ここでは取らない（「このカードで勝負」を押したときに、その 1 人分だけ取る）。
+  // 勝負に使えるのはカテゴリーに入る人だけなので、その人たちを「未取得」にしておく
+  for (const p of people) if (p.categories.length > 0 && p.jaTitle) p.score = { status: "pending" };
 
   return {
     mode: "live",
@@ -98,6 +104,7 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     people,
     truncated: report.failed > 0,
     totalFound: people.length + report.failed,
+    timings,
   };
 }
 

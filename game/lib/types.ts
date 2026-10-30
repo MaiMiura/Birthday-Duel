@@ -14,12 +14,14 @@ export interface ScorePeriod {
 
 /**
  * 知名度スコアの状態。
+ * - pending: まだ取っていない。「このカードで勝負」を押したときに、その 1 人分だけ取る
  * - ok: 取得できた（views が 0 のこともある。0 は「閲覧されなかった」という実際の値）
  * - failed: API への問い合わせに失敗した。値は不明なので勝負には使わない
  * - no-article: 日本語版 Wikipedia の記事がないのでスコア対象外
  * - not-fetched: どのカテゴリーにも入らないので取得していない
  */
 export type Score =
+  | { status: "pending" }
   | { status: "ok"; views: number; demo?: boolean }
   | { status: "failed"; reason: string }
   | { status: "no-article" }
@@ -79,6 +81,8 @@ export interface Hand {
   truncated: boolean;
   /** 打ち切る前に見つかった人数 */
   totalFound: number;
+  /** 手札を作るのにかかった時間（ミリ秒、段階ごと）。遅いときにどこが遅いかを見るため */
+  timings?: Record<string, number>;
 }
 
 /** 「このカードで勝負」を押した時点で固定するカードの中身。 */

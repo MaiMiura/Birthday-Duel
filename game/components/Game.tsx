@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { birthdayKey, formatBirthday, type Birthday } from "@/lib/birthday";
 import { CATEGORIES } from "@/lib/categories";
 import { DEMO_BIRTHDAYS, getDemoHand } from "@/lib/demo";
-import { selectCard, visiblePeople } from "@/lib/game";
+import { selectCard, visiblePeople, type FetchedScore } from "@/lib/game";
 import {
   DEFAULT_SETTINGS,
   loadBirthday,
@@ -68,6 +68,9 @@ export default function Game() {
   const [retrying, setRetrying] = useState(false);
   // 公開画面から「次は〇〇で勝負」で戻ってきたときのお題（手札画面に案内を出す）
   const [roundCategory, setRoundCategory] = useState<CategoryId | null>(null);
+  // 「このカードで勝負」を押してから、その人のスコアを取り終えるまで
+  const [choosing, setChoosing] = useState(false);
+  const [chooseError, setChooseError] = useState<string | null>(null);
   // 設定画面を閉じたときに戻る画面
   const [settingsFrom, setSettingsFrom] = useState<Screen>("hand");
   const requestId = useRef(0);
@@ -151,9 +154,31 @@ export default function Game() {
     void loadHand(b, demo, settings);
   };
 
-  const choose = (person: Person, category: CategoryId) => {
-    if (load.status !== "ready") return;
-    const sel = { card: selectCard(load.hand, person, category), revealed: false };
+  const choose = async (person: Person, category: CategoryId) => {
+    if (load.status !== "ready" || choosing) return;
+    const hand = load.hand;
+    let fetched: FetchedScore | undefined;
+    if (person.score.status === "pending") {
+      // 閲覧数は、選んだこの 1 人分だけ、ここで取る
+      setChoosing(true);
+      setChooseError(null);
+      try {
+        const res = await fetch(`/api/score?title=${encodeURIComponent(person.jaTitle ?? "")}`, {
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok || typeof body?.views !== "number") throw new Error(body?.error ?? `HTTP ${res.status}`);
+        fetched = body as FetchedScore;
+      } catch {
+        setChooseError(`「${person.name}」のスコアを取得できませんでした。もう一度押すか、別のカードを選んでください。`);
+        setDetail(null);
+        return;
+      } finally {
+        setChoosing(false);
+      }
+    }
+    const sel = { card: selectCard(hand, person, category, new Date(), fetched), revealed: false };
+    setChooseError(null);
     setSelection(sel);
     saveSelection(sel);
     setDetail(null);
@@ -257,6 +282,7 @@ export default function Game() {
         roundCategory={roundCategory}
         onTab={(t) => {
           setTab(t);
+          setChooseError(null);
           setRoundCategory(null);
           setDetail(null);
         }}
@@ -277,6 +303,8 @@ export default function Game() {
           setScreen("settings");
         }}
         onRetryScores={retryScores}
+        choosing={choosing}
+        chooseError={chooseError}
       />
     );
   } else {

@@ -128,3 +128,24 @@ describe("次の勝負のカテゴリー", () => {
     assert.equal(nextCategory("history"), "entertainment");
   });
 });
+
+describe("選んだときにスコアを取るカード", () => {
+  const now = new Date("2026-10-29T00:00:00Z");
+  const hand = getDemoHand(10, 29, now)!;
+  const person = { ...hand.people[0], score: { status: "pending" as const } };
+
+  it("未取得（pending）のカードも選べる", () => {
+    assert.deepEqual(cardState(person, person.categories[0]), { playable: true });
+  });
+  it("取ったスコアと集計期間で固定する。スコアがなければ選べない", () => {
+    const card = selectCard(hand, person, person.categories[0], now, {
+      views: 777,
+      period: { start: "2025-11", end: "2026-10" },
+      fetchedAt: "2026-11-01T00:00:00.000Z",
+    });
+    assert.equal(card.views, 777);
+    assert.deepEqual(card.period, { start: "2025-11", end: "2026-10" });
+    assert.equal(card.fetchedAt, "2026-11-01T00:00:00.000Z");
+    assert.throws(() => selectCard(hand, person, person.categories[0], now));
+  });
+});

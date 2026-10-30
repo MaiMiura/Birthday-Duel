@@ -11,6 +11,13 @@ import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar }
 
 export type Tab = CategoryId | "all";
 
+const TIMING_LABELS: Record<string, string> = {
+  page: "一覧",
+  people: "人物",
+  occupations: "職業",
+  images: "写真",
+};
+
 export default function HandView({
   hand,
   tab,
@@ -26,6 +33,8 @@ export default function HandView({
   onChangeBirthday,
   onSettings,
   onRetryScores,
+  choosing = false,
+  chooseError = null,
 }: {
   hand: Hand;
   tab: Tab;
@@ -42,6 +51,9 @@ export default function HandView({
   onChangeBirthday: () => void;
   onSettings: () => void;
   onRetryScores: () => void;
+  /** 選んだ人のスコアを取っているところ */
+  choosing?: boolean;
+  chooseError?: string | null;
 }) {
   const demo = hand.mode === "demo";
   const people = visiblePeople(hand, tab, settings);
@@ -149,6 +161,7 @@ export default function HandView({
             </button>
           </Notice>
         )}
+        {chooseError && tab === "all" && <Notice>{chooseError}</Notice>}
         {filteredCount > 0 && (
           <p className="text-[0.7rem] text-ink-soft">
             センシティブな人物を {filteredCount} 人非表示にしています（メニューの設定で変更できます）。
@@ -183,14 +196,28 @@ export default function HandView({
 
       <footer className="mt-6 text-[0.7rem] leading-relaxed text-ink-soft">
         知名度スコアは日本語版 Wikipedia の閲覧数をもとにした指標です。集計期間 {formatPeriod(hand.period)}
-        （UTC）・データ取得日 {formatDateTime(hand.fetchedAt)}。人物データ: Wikidata（CC0）。
+        （UTC）・データ取得日 {formatDateTime(hand.fetchedAt)}。人物データ: Wikipedia・Wikidata（CC0）。
+        {hand.timings && (
+          <span className="mt-1 block">
+            読み込み {(Object.values(hand.timings).reduce((a, b) => a + b, 0) / 1000).toFixed(1)} 秒（
+            {Object.entries(hand.timings)
+              .map(([k, v]) => `${TIMING_LABELS[k] ?? k} ${(v / 1000).toFixed(1)}`)
+              .join(" / ")}
+            ）
+          </span>
+        )}
       </footer>
 
       {tab !== "all" && people.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-10 bg-linear-to-t from-paper via-paper/90 to-transparent px-4 pt-6 pb-5">
           <div className="mx-auto max-w-md">
-            <LimeButton disabled={!selected} onClick={() => selected && onChoose(selected, tab)}>
-              {selected ? "このカードで勝負" : "カードを選んでください"}
+            {chooseError && (
+              <p role="alert" className="mb-2 rounded-2xl bg-ink px-4 py-3 text-xs font-bold text-white">
+                {chooseError}
+              </p>
+            )}
+            <LimeButton disabled={!selected || choosing} onClick={() => selected && onChoose(selected, tab)}>
+              {choosing ? "スコアを確認中…" : selected ? "このカードで勝負" : "カードを選んでください"}
             </LimeButton>
           </div>
         </div>

@@ -1,7 +1,7 @@
 // 画面に依存しないゲームのルール（どのカードが勝負に使えるか、スコアの表示など）。
 
 import { CATEGORY_IDS } from "./categories";
-import type { CategoryId, Hand, Person, SelectedCard } from "./types";
+import type { CategoryId, Hand, Person, ScorePeriod, SelectedCard } from "./types";
 
 export type CardState =
   | { playable: true }
@@ -14,6 +14,12 @@ export function cardState(person: Person, category: CategoryId | "all"): CardSta
   }
   if (person.categories.length === 0) {
     return { playable: false, label: "部門なし", detail: "どのカテゴリーにも入らないため、勝負には使えません。" };
+  }
+  if (s.status === "pending") {
+    // まだ取っていないだけ。選んだときに取って、取れなければ勝負に使えない
+    return category !== "all" && !person.categories.includes(category)
+      ? { playable: false, label: "別のカテゴリー", detail: "このカテゴリーの勝負には使えません。" }
+      : { playable: true };
   }
   if (s.status === "failed") {
     return { playable: false, label: "スコア未取得", detail: "閲覧数を取得できなかったため、今は勝負に使えません。再試行してください。" };
@@ -42,9 +48,23 @@ export function visiblePeople(hand: Hand, category: CategoryId | "all", opts: Vi
   );
 }
 
-export function selectCard(hand: Hand, person: Person, category: CategoryId, now = new Date()): SelectedCard {
+/** 「このカードで勝負」を押したときに取った、その 1 人分のスコア */
+export interface FetchedScore {
+  views: number;
+  period: ScorePeriod;
+  fetchedAt: string;
+}
+
+export function selectCard(
+  hand: Hand,
+  person: Person,
+  category: CategoryId,
+  now = new Date(),
+  fetched?: FetchedScore,
+): SelectedCard {
   const state = cardState(person, category);
-  if (!state.playable || person.score.status !== "ok") {
+  const views = person.score.status === "ok" ? person.score.views : fetched?.views;
+  if (!state.playable || views === undefined) {
     throw new Error("このカードは勝負に使えません");
   }
   // 選んだ時点の値をコピーして固定する（公開までにデータが更新されても変わらない）
@@ -52,9 +72,9 @@ export function selectCard(hand: Hand, person: Person, category: CategoryId, now
     person: structuredClone(person),
     category,
     mode: hand.mode,
-    period: { ...hand.period },
-    fetchedAt: hand.fetchedAt,
-    views: person.score.views,
+    period: { ...(fetched?.period ?? hand.period) },
+    fetchedAt: fetched?.fetchedAt ?? hand.fetchedAt,
+    views,
     selectedAt: now.toISOString(),
   };
 }

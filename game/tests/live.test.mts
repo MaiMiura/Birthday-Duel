@@ -10,7 +10,7 @@ process.env.HAND_CACHE_DIR = mkdtempSync(path.join(os.tmpdir(), "bduel-test-"));
 
 const { fetchViews } = await import("../lib/server/pageviews");
 const { toPersonImage } = await import("../lib/server/images");
-const { getHand, retryFailedScores } = await import("../lib/server/hand");
+const { getHand } = await import("../lib/server/hand");
 const { clearMemoryCache } = await import("../lib/server/cache");
 const { parseBirths } = await import("../lib/server/birthpage");
 const { resetThrottle } = await import("../lib/server/wikidata");
@@ -312,7 +312,7 @@ describe("手札の組み立て（モック）", () => {
     });
   });
 
-  it("人物・分類・画像・スコアがそろい、取得失敗は再試行で埋まる", async () => {
+  it("人物・分類・画像がそろい、スコアは選ぶまで取らない", async () => {
     const hand = await getHand(2, 29, NOW);
     assert.equal(hand.mode, "live");
     assert.deepEqual(hand.period, { start: "2025-10", end: "2026-09" });
@@ -331,7 +331,7 @@ describe("手札の組み立て（モック）", () => {
     assert.equal(singer.image?.artist, "Photographer");
     assert.equal(singer.description, "日本の歌手");
     assert.equal(singer.jaTitle, "歌う 人");
-    assert.deepEqual(singer.score, { status: "ok", views: 42 });
+    assert.deepEqual(singer.score, { status: "pending" }); // 閲覧数は「このカードで勝負」のときに取る
 
     const king = byId("Q2")!;
     assert.equal(king.name, "Old King"); // 日本語ラベルがなければ英語
@@ -340,7 +340,7 @@ describe("手札の組み立て（モック）", () => {
     assert.equal(king.birthDate, "1600-02-29");
     assert.equal(king.description, "君主"); // Wikidata に説明がなければ一覧の説明
     assert.deepEqual(king.categories, ["history"]);
-    assert.equal(king.score.status, "failed");
+    assert.equal(king.score.status, "pending");
 
     const writer = byId("Q3")!;
     assert.deepEqual(writer.categories, []); // 作家はどのカテゴリーにも入れない
@@ -353,9 +353,8 @@ describe("手札の組み立て（モック）", () => {
     await getHand(2, 29, NOW);
     assert.equal(pageReads, 1);
 
-    pageviewsFail = false;
-    const retried = await retryFailedScores(2, 29, NOW);
-    assert.deepEqual(retried.people.find((p) => p.id === "Q2")!.score, { status: "ok", views: 42 });
+    // 手札を作るときには閲覧数の API を呼ばない
+    assert.ok(!calls.some((c) => c.startsWith("wikimedia.org")));
   });
 
   it("同時に開いても取得は 1 回", async () => {
