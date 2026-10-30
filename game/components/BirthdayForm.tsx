@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { daysInMonth, type Birthday } from "@/lib/birthday";
-import { DEMO_BIRTHDAYS, getDemoHand } from "@/lib/demo";
+import { getDemoHand } from "@/lib/demo";
 import type { Person } from "@/lib/types";
 import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar } from "./ui";
 
-// 1 枚目の画面に飾る見本のカード（デモ用の架空の人物）
+// 1 枚目の画面に飾る見本のカード（架空の人物。「見本」と表示する）
 const SAMPLE = ["D1029-6", "D1029-1", "D1029-3"].flatMap((id) =>
   (getDemoHand(10, 29)?.people ?? []).filter((p) => p.id === id),
 );
@@ -15,14 +15,12 @@ export default function BirthdayForm({
   initial,
   demo,
   onSubmit,
-  onToggleDemo,
   onCancel,
   onMenu,
 }: {
   initial: Birthday | null;
   demo: boolean;
   onSubmit: (b: Birthday) => void;
-  onToggleDemo: (on: boolean) => void;
   onCancel?: () => void;
   onMenu: () => void;
 }) {
@@ -88,7 +86,7 @@ export default function BirthdayForm({
         遊び方
       </button>
 
-      {rulesOpen && <RulesSheet demo={demo} onToggleDemo={onToggleDemo} onClose={() => setRulesOpen(false)} />}
+      {rulesOpen && <RulesSheet onClose={() => setRulesOpen(false)} />}
     </main>
   );
 }
@@ -140,7 +138,7 @@ function FanCard({ person, index }: { person: Person; index: number }) {
       <div className="relative">
         <CardVisual person={person} className="aspect-[3/4] w-full rounded-lg" />
         <span className="absolute top-1 right-1 rounded bg-black/70 px-1 text-[0.55rem] font-bold text-white">
-          DEMO
+          見本
         </span>
         {index === 1 && <Signature name={person.nameRoman} className="bottom-3 left-2 text-2xl" />}
       </div>
@@ -150,15 +148,7 @@ function FanCard({ person, index }: { person: Person; index: number }) {
   );
 }
 
-function RulesSheet({
-  demo,
-  onToggleDemo,
-  onClose,
-}: {
-  demo: boolean;
-  onToggleDemo: (on: boolean) => void;
-  onClose: () => void;
-}) {
+function RulesSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/50 sm:items-center" onClick={onClose}>
       <div
@@ -180,21 +170,6 @@ function RulesSheet({
         </ol>
         <p className="mt-3 text-sm text-ink-soft">負けた人の罰ゲームは、その場で決めてください。誕生日はこの端末にだけ保存されます。</p>
 
-        <label className="mt-5 flex min-h-12 items-start gap-3 rounded-2xl bg-paper p-4 text-sm">
-          <input
-            type="checkbox"
-            checked={demo}
-            onChange={(e) => onToggleDemo(e.target.checked)}
-            className="mt-0.5 size-5 shrink-0 accent-ink"
-          />
-          <span>
-            <span className="block font-bold">デモモードで試す</span>
-            <span className="block text-ink-soft">
-              架空の人物とデモ値で操作を確認できます（デモデータがある誕生日:{" "}
-              {DEMO_BIRTHDAYS.map((b) => `${b.month}月${b.day}日`).join("・")}）
-            </span>
-          </span>
-        </label>
         <GhostButton className="mt-4" onClick={onClose}>
           閉じる
         </GhostButton>

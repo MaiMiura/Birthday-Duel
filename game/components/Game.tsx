@@ -6,13 +6,12 @@ import { CATEGORIES } from "@/lib/categories";
 import { DEMO_BIRTHDAYS, getDemoHand } from "@/lib/demo";
 import { selectCard, visiblePeople, type FetchedScore } from "@/lib/game";
 import {
+  clearLegacyDemo,
   DEFAULT_SETTINGS,
   loadBirthday,
-  loadDemo,
   loadSelection,
   loadSettings,
   saveBirthday,
-  saveDemo,
   saveSelection,
   saveSettings,
   type SelectionState,
@@ -109,8 +108,9 @@ export default function Game() {
   // 端末に保存した誕生日・設定・選択中のカードを読み込む
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const isDemo = params.get("demo") === "1" ? true : params.get("demo") === "0" ? false : loadDemo();
-    saveDemo(isDemo);
+    // デモモード（架空の人物）は開発・確認用。URL に ?demo=1 を付けたときだけ使い、端末には保存しない
+    const isDemo = params.get("demo") === "1";
+    clearLegacyDemo();
     const s = loadSettings();
     const b = loadBirthday();
     const sel = loadSelection();
@@ -136,13 +136,6 @@ export default function Game() {
   const clearSelection = () => {
     setSelection(null);
     saveSelection(null);
-  };
-
-  const changeDemo = (on: boolean) => {
-    setDemo(on);
-    saveDemo(on);
-    clearSelection();
-    if (birthday) void loadHand(birthday, on, settings);
   };
 
   const submitBirthday = (b: Birthday) => {
@@ -207,17 +200,12 @@ export default function Game() {
     }
   };
 
-  /** 実データが取れないときなどに、利用者の操作でデモモードへ切り替える */
-  const tryDemo = (b?: Birthday) => {
-    setDemo(true);
-    saveDemo(true);
+  /** デモモードで、デモデータのある誕生日に切り替える（開発・確認用） */
+  const tryDemo = (b: Birthday) => {
     clearSelection();
-    if (b) {
-      setBirthday(b);
-      saveBirthday(b);
-    }
-    const target = b ?? birthday;
-    if (target) void loadHand(target, true, settings);
+    setBirthday(b);
+    saveBirthday(b);
+    void loadHand(b, true, settings);
   };
 
   if (!mounted) {
@@ -232,7 +220,6 @@ export default function Game() {
         demo={demo}
         hasBirthday={birthday !== null}
         onChange={updateSettings}
-        onToggleDemo={changeDemo}
         onResetBirthday={() => {
           saveBirthday(null);
           setBirthday(null);
@@ -249,7 +236,6 @@ export default function Game() {
         initial={birthday}
         demo={demo}
         onSubmit={submitBirthday}
-        onToggleDemo={changeDemo}
         onCancel={birthday ? () => setScreen("hand") : undefined}
         onMenu={() => {
           setSettingsFrom("birthday");
@@ -341,7 +327,7 @@ function StatusScreen({
   demo: boolean;
   onRetry: () => void;
   onChangeBirthday: () => void;
-  onDemo: (b?: Birthday) => void;
+  onDemo: (b: Birthday) => void;
   onMenu: () => void;
 }) {
   return (
@@ -362,7 +348,7 @@ function StatusScreen({
             <div aria-hidden className="mx-auto size-12 animate-spin rounded-full border-4 border-line border-t-ink" />
             <p className="text-xl font-black">手札を集めています…</p>
             <p className="text-sm text-ink-soft">
-              Wikidata と Wikipedia から人物と閲覧数を集めています。この誕生日を初めて開くときは 1 分ほどかかることがあります。
+              Wikipedia と Wikidata から、この日生まれの人物を集めています。この誕生日を初めて開くときは 10 秒ほどかかります。
             </p>
           </div>
         )}
@@ -375,9 +361,8 @@ function StatusScreen({
             </p>
             <p className="text-sm">{load.message}</p>
             {load.detail && <p className="text-xs break-all text-ink-soft">詳細: {load.detail}</p>}
-            <p className="text-xs text-ink-soft">少し待ってから再試行してください。デモモードには自動で切り替わりません。</p>
+            <p className="text-xs text-ink-soft">少し待ってから再試行してください。</p>
             <LimeButton onClick={onRetry}>再試行</LimeButton>
-            <GhostButton onClick={() => onDemo()}>デモモードで試す</GhostButton>
           </div>
         )}
 

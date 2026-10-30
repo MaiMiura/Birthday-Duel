@@ -48,7 +48,7 @@ export function DemoPill() {
   );
 }
 
-/** 画面上部: 左にロゴか戻るボタン、右に DEMO とメニュー */
+/** 画面上部: 左にロゴか戻るボタン、右にメニュー（デモモードのときは DEMO の印も） */
 export function TopBar({
   demo,
   onBack,
@@ -75,7 +75,7 @@ export function TopBar({
       </div>
       {center && <div className="text-center">{center}</div>}
       <div className="flex min-w-11 items-center justify-end gap-2">
-        {demo ? <DemoPill /> : <span className="text-[0.7rem] font-bold tracking-wider text-ink-soft">LIVE</span>}
+        {demo && <DemoPill />}
         {onMenu && (
           <button
             type="button"

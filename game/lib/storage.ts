@@ -50,8 +50,8 @@ export function loadBirthday(): Birthday | null {
 }
 export const saveBirthday = (b: Birthday | null) => write(KEYS.birthday, b);
 
-export const loadDemo = () => read<boolean>(KEYS.demo) === true;
-export const saveDemo = (on: boolean) => write(KEYS.demo, on ? true : null);
+/** 以前の版で端末に保存していた「デモモード」の設定を消す（今は URL の ?demo=1 のときだけデモになる） */
+export const clearLegacyDemo = () => write(KEYS.demo, null);
 
 export function loadSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...(read<Partial<Settings>>(KEYS.settings) ?? {}) };

@@ -8,7 +8,6 @@ export default function SettingsView({
   demo,
   hasBirthday,
   onChange,
-  onToggleDemo,
   onResetBirthday,
   onBack,
 }: {
@@ -16,7 +15,6 @@ export default function SettingsView({
   demo: boolean;
   hasBirthday: boolean;
   onChange: (s: Settings) => void;
-  onToggleDemo: (on: boolean) => void;
   onResetBirthday: () => void;
   onBack: () => void;
 }) {
@@ -44,12 +42,6 @@ export default function SettingsView({
         onChange={(v) => onChange({ ...settings, reduceMotion: v })}
         title="アニメーションを減らす"
         description="カードをめくる演出などを止めます（端末の「視差効果を減らす」設定にも従います）"
-      />
-      <Toggle
-        checked={demo}
-        onChange={onToggleDemo}
-        title="デモモード"
-        description="架空の人物とデモ値で操作を試します。実データとは別物です"
       />
 
       <section className="rounded-2xl bg-surface p-4 shadow-sm">
