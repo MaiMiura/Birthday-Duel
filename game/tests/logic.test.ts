@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { daysInMonth, formatBirthDate, isValidBirthday, parseBirthday } from "../lib/birthday";
 import { classify, sensitiveReason, type AncestorMap } from "../lib/classify";
 import { getDemoHand } from "../lib/demo";
-import { approxViews, cardState, formatViews, selectCard, visiblePeople } from "../lib/game";
+import { approxViews, cardState, formatViews, nextCategory, selectCard, visiblePeople } from "../lib/game";
 import { formatPeriod, periodDays, periodMonths, scorePeriod } from "../lib/period";
 
 describe("誕生日", () => {
@@ -116,5 +116,15 @@ describe("カードとスコア", () => {
     assert.equal(approxViews(1_234_567), "約123万回");
     assert.equal(approxViews(9_999), "9,999回");
     assert.equal(approxViews(250_000_000), "約2.5億回");
+  });
+});
+
+describe("次の勝負のカテゴリー", () => {
+  it("決まった順に進み、最後のあとは最初に戻る", () => {
+    assert.equal(nextCategory("entertainment"), "music");
+    assert.equal(nextCategory("music"), "sports");
+    assert.equal(nextCategory("sports"), "knowledge");
+    assert.equal(nextCategory("knowledge"), "history");
+    assert.equal(nextCategory("history"), "entertainment");
   });
 });

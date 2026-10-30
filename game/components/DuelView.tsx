@@ -1,9 +1,9 @@
 "use client";
 
-import { categoryRule } from "@/lib/categories";
-import { approxViews, formatDateTime, formatViews } from "@/lib/game";
+import { CATEGORIES, categoryRule } from "@/lib/categories";
+import { approxViews, formatDateTime, formatViews, nextCategory } from "@/lib/game";
 import { formatPeriod } from "@/lib/period";
-import type { SelectedCard } from "@/lib/types";
+import type { CategoryId, SelectedCard } from "@/lib/types";
 import { CardVisual, CategoryLabel, LimeButton, Signature, TopBar } from "./ui";
 
 /** 公開待ち（裏面）と公開（表面）。カードをめくる演出でつなぐ。 */
@@ -18,17 +18,19 @@ export default function DuelView({
   revealed: boolean;
   onReveal: () => void;
   onReselect: () => void;
-  onNext: () => void;
+  /** 次の勝負のカテゴリーを選んで手札に戻る */
+  onNext: (category: CategoryId) => void;
 }) {
   const demo = card.mode === "demo";
   const rule = categoryRule(card.category);
   const { person } = card;
+  const next = nextCategory(card.category);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-3 pb-6">
       <TopBar
         demo={demo}
-        onBack={revealed ? onNext : onReselect}
+        onBack={revealed ? () => onNext(card.category) : onReselect}
         center={
           <span className="relative px-2 text-base font-black">
             {rule.label}
@@ -133,7 +135,22 @@ export default function DuelView({
             <br />
             <strong className="text-ink">相手のカードと集計期間が同じか確かめてから比べてください。</strong>
           </p>
-          <LimeButton onClick={onNext}>次の勝負へ</LimeButton>
+          <LimeButton onClick={() => onNext(next)}>次は「{categoryRule(next).label}」で勝負</LimeButton>
+          <div className="text-center">
+            <p className="text-xs font-bold text-ink-soft">ほかのカテゴリーにする</p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {CATEGORIES.filter((c) => c.id !== next).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onNext(c.id)}
+                  className="min-h-11 rounded-full border border-line bg-surface px-4 text-sm font-bold"
+                >
+                  {c.id === card.category ? `もう一度「${c.label}」` : c.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </main>

@@ -1,5 +1,6 @@
 // 画面に依存しないゲームのルール（どのカードが勝負に使えるか、スコアの表示など）。
 
+import { CATEGORY_IDS } from "./categories";
 import type { CategoryId, Hand, Person, SelectedCard } from "./types";
 
 export type CardState =
@@ -56,6 +57,15 @@ export function selectCard(hand: Hand, person: Person, category: CategoryId, now
     views: person.score.views,
     selectedAt: now.toISOString(),
   };
+}
+
+/**
+ * 次の勝負のカテゴリー。どの端末でも同じ順（芸能 → 音楽 → スポーツ → 知・発明 → 歴史・社会 → 芸能…）で進むので、
+ * みんなが「次の勝負へ」を押せば同じカテゴリーになる。カードのないカテゴリーも飛ばさない（端末ごとにずれないように）。
+ */
+export function nextCategory(current: CategoryId): CategoryId {
+  const i = CATEGORY_IDS.indexOf(current);
+  return CATEGORY_IDS[(i + 1) % CATEGORY_IDS.length];
 }
 
 /** 1234567 → "1,234,567" */

@@ -17,6 +17,7 @@ export default function HandView({
   settings,
   detail,
   retrying,
+  roundCategory,
   onTab,
   onOpen,
   onClose,
@@ -31,6 +32,8 @@ export default function HandView({
   settings: Settings;
   detail: Person | null;
   retrying: boolean;
+  /** 公開画面から決めた次のお題（そのタブを開いているあいだ案内を出す） */
+  roundCategory?: CategoryId | null;
   onTab: (t: Tab) => void;
   onOpen: (p: Person) => void;
   onClose: () => void;
@@ -112,6 +115,15 @@ export default function HandView({
       </nav>
 
       <div className="mt-4 space-y-2">
+        {roundCategory && tab === roundCategory && (
+          <div role="status" className="flex items-center gap-3 rounded-2xl bg-ink p-4 text-white">
+            <span aria-hidden className="h-8 w-1.5 -skew-x-12 bg-lime" />
+            <p className="text-base font-black">
+              次のお題は「{categoryRule(roundCategory).label}」
+              <span className="block text-xs font-bold text-white/70">手札から 1 枚選んで勝負！</span>
+            </p>
+          </div>
+        )}
         <p className="text-xs text-ink-soft">
           {tab !== "all"
             ? `${categoryRule(tab).examples}。カードをタップして選び、下のボタンで勝負。`

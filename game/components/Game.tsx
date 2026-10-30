@@ -66,6 +66,8 @@ export default function Game() {
   const [tab, setTab] = useState<Tab>("entertainment");
   const [detail, setDetail] = useState<Person | null>(null);
   const [retrying, setRetrying] = useState(false);
+  // 公開画面から「次は〇〇で勝負」で戻ってきたときのお題（手札画面に案内を出す）
+  const [roundCategory, setRoundCategory] = useState<CategoryId | null>(null);
   // 設定画面を閉じたときに戻る画面
   const [settingsFrom, setSettingsFrom] = useState<Screen>("hand");
   const requestId = useRef(0);
@@ -159,9 +161,10 @@ export default function Game() {
     window.scrollTo(0, 0);
   };
 
-  const backToHand = (category?: CategoryId) => {
+  const backToHand = (category?: CategoryId, nextRound = false) => {
     clearSelection();
     if (category) setTab(category);
+    setRoundCategory(nextRound && category ? category : null);
     setScreen("hand");
     window.scrollTo(0, 0);
   };
@@ -240,7 +243,7 @@ export default function Game() {
           saveSelection(sel);
         }}
         onReselect={() => backToHand(selection.card.category)}
-        onNext={() => backToHand(selection.card.category)}
+        onNext={(c) => backToHand(c, c !== selection.card.category)}
       />
     );
   } else if (load.status === "ready") {
@@ -251,8 +254,10 @@ export default function Game() {
         settings={settings}
         detail={detail}
         retrying={retrying}
+        roundCategory={roundCategory}
         onTab={(t) => {
           setTab(t);
+          setRoundCategory(null);
           setDetail(null);
         }}
         onOpen={setDetail}
