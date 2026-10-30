@@ -13,6 +13,7 @@ const { toPersonImage } = await import("../lib/server/images");
 const { getHand, retryFailedScores } = await import("../lib/server/hand");
 const { clearMemoryCache } = await import("../lib/server/cache");
 const { parseBirths } = await import("../lib/server/birthpage");
+const { resetThrottle } = await import("../lib/server/wikidata");
 
 type Handler = (url: URL, body: string) => Response | Promise<Response>;
 const realFetch = globalThis.fetch;
@@ -216,7 +217,7 @@ describe("手札の組み立て（モック）", () => {
       claims: { P31: [item("Q5")], P106: [item("Q36180")], P569: [time("+1950-02-29T00:00:00Z")] },
     },
     Q4: { id: "Q4", labels: { ja: { value: "架空のバンド" } }, claims: { P31: [item("Q215380")] } },
-    Q5x: { id: "Q5x", labels: { ja: { value: "古代の人" } }, claims: { P31: [item("Q5")], P106: [item("Q4964182")] } },
+    Q55: { id: "Q55", labels: { ja: { value: "古代の人" } }, claims: { P31: [item("Q5")], P106: [item("Q4964182")] } },
     // 職業（P279 で上位分類へ）
     Q177220: { id: "Q177220", labels: { ja: { value: "歌手" } }, claims: { P279: [item("Q639669")] } },
     Q639669: { id: "Q639669", labels: { ja: { value: "音楽家" } }, claims: { P279: [item("Q483501")] } },
@@ -231,19 +232,41 @@ describe("手札の組み立て（モック）", () => {
     "昔の 王": "Q2",
     "作家 (小説家)": "Q3",
     "架空のバンド": "Q4",
-    "古代の 人": "Q5x",
+    "古代の 人": "Q55",
   };
+
+  let throttled = false;
+  let flaky = new Set<string>();
 
   beforeEach(() => {
     clearMemoryCache();
+    resetThrottle();
     pageviewsFail = true;
     pageReads = 0;
+    throttled = false;
+    flaky = new Set();
     mockFetch(async (url) => {
       const q = url.searchParams;
-      if (url.host === "ja.wikipedia.org" && q.get("action") === "parse") {
+      if (url.host === "ja.wikipedia.org" && url.pathname === "/w/index.php" && q.get("action") === "raw") {
         pageReads++;
-        assert.equal(q.get("page"), "2月29日");
-        return json({ parse: { wikitext: BIRTH_PAGE } });
+        assert.equal(q.get("title"), "2月29日");
+        return new Response(BIRTH_PAGE, { status: 200, headers: { "Content-Type": "text/x-wiki" } });
+      }
+      if (throttled && url.pathname.endsWith("/api.php") && url.host !== "commons.wikimedia.org") {
+        return new Response("You are making too many requests to the API.", { status: 429, headers: { "retry-after": "0" } });
+      }
+      if (url.host === "www.wikidata.org" && url.pathname.startsWith("/wiki/Special:ItemByTitle/jawiki/")) {
+        const title = decodeURIComponent(url.pathname.split("/").pop()!).replace(/_/g, " ");
+        const target = title === "歌う人 (別名)" ? "歌う 人" : title;
+        if (flaky.has(target)) return new Response("", { status: 429, headers: { "retry-after": "0" } });
+        const qid = PAGEPROPS[target];
+        return qid
+          ? new Response(null, { status: 302, headers: { location: `https://www.wikidata.org/wiki/${qid}` } })
+          : new Response("<html>not found</html>", { status: 200 });
+      }
+      if (url.host === "www.wikidata.org" && url.pathname.startsWith("/wiki/Special:EntityData/")) {
+        const id = url.pathname.split("/").pop()!.replace(".json", "");
+        return ENTITIES[id] ? json({ entities: { [id]: ENTITIES[id] } }) : json({}, 404);
       }
       if (url.host === "ja.wikipedia.org" && q.get("action") === "query") {
         const titles = q.get("titles")!.split("|");
@@ -298,7 +321,7 @@ describe("手札の組み立て（モック）", () => {
     // バンド（人間ではない）は除く。リダイレクト経由の重複は 1 人にまとめる。生まれ年の新しい順
     assert.deepEqual(
       hand.people.map((p) => p.id),
-      ["Q1", "Q3", "Q2", "Q5x"],
+      ["Q1", "Q3", "Q2", "Q55"],
     );
 
     const singer = byId("Q1")!;
@@ -323,8 +346,8 @@ describe("手札の組み立て（モック）", () => {
     assert.deepEqual(writer.categories, []); // 作家はどのカテゴリーにも入れない
     assert.equal(writer.score.status, "not-fetched");
 
-    assert.equal(byId("Q5x")!.birthDate, "-0100-02-29");
-    assert.deepEqual(byId("Q5x")!.categories, ["knowledge"]);
+    assert.equal(byId("Q55")!.birthDate, "-0100-02-29");
+    assert.deepEqual(byId("Q55")!.categories, ["knowledge"]);
 
     // 2 回目はキャッシュから（Wikipedia に問い合わせない）
     await getHand(2, 29, NOW);
@@ -341,5 +364,38 @@ describe("手札の組み立て（モック）", () => {
     const [a, b] = await Promise.all([getHand(2, 29, later), getHand(2, 29, later)]);
     assert.equal(a, b);
     assert.equal(pageReads, 1);
+  });
+
+  it("API が回数制限（429）でも、Wikidata の 1 件ずつの窓口で同じ手札を作る", async () => {
+    throttled = true;
+    const hand = await getHand(2, 29, new Date("2027-01-10T00:00:00Z"));
+    assert.deepEqual(
+      hand.people.map((p) => p.id),
+      ["Q1", "Q3", "Q2", "Q55"],
+    );
+    assert.deepEqual(hand.people[0].categories, ["music"]);
+    assert.equal(hand.truncated, false);
+    assert.ok(calls.some((c) => c.includes("Special:ItemByTitle")));
+    assert.ok(calls.some((c) => c.includes("Special:EntityData")));
+  });
+
+  it("取れなかった人だけ抜いて手札を作り、その手札は保存しない", async () => {
+    throttled = true;
+    flaky = new Set(["作家 (小説家)"]); // この人だけ何度やっても 429
+    const when = new Date("2027-02-10T00:00:00Z");
+    const hand = await getHand(2, 29, when);
+    assert.deepEqual(
+      hand.people.map((p) => p.id),
+      ["Q1", "Q2", "Q55"],
+    );
+    assert.equal(hand.truncated, true);
+    assert.equal(hand.totalFound, 4);
+    // 保存していないので、次に開くと取り直す
+    flaky = new Set();
+    resetThrottle();
+    const again = await getHand(2, 29, when);
+    assert.equal(again.people.length, 4);
+    assert.equal(again.truncated, false);
+    assert.equal(pageReads, 2);
   });
 });

@@ -26,7 +26,22 @@ export interface FetchJsonOptions {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** 429 / 503 の Retry-After（秒）に従って待つ時間。なければ 1 秒、最大 10 秒 */
+export function retryAfterMs(res: Response, fallbackMs = 1000): number {
+  const sec = Number(res.headers.get("retry-after"));
+  return Number.isFinite(sec) && sec > 0 ? Math.min(sec * 1000, 10_000) : fallbackMs;
+}
+
 export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise<T> {
+  return fetchBody(url, opts, (text) => JSON.parse(text) as T);
+}
+
+/** 本文をそのまま文字列で受け取る（Wikipedia の生の wikitext など） */
+export async function fetchText(url: string, opts: FetchJsonOptions): Promise<string> {
+  return fetchBody(url, { ...opts, init: { ...opts.init, headers: { Accept: "text/plain, */*", ...opts.init?.headers } } }, (t) => t);
+}
+
+async function fetchBody<T>(url: string, opts: FetchJsonOptions, parse: (text: string) => T): Promise<T> {
   const retries = opts.retries ?? 1;
   for (let attempt = 0; ; attempt++) {
     let res: Response;
@@ -63,7 +78,7 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise
       }
       // 混雑していると、応答が途中で打ち切られることがある（JSON が壊れる）
       try {
-        return JSON.parse(text) as T;
+        return parse(text);
       } catch {
         if (attempt < retries) {
           await sleep(1000 * (attempt + 1));
@@ -76,7 +91,8 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise
       }
     }
     if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-      await sleep(1000 * (attempt + 1));
+      await res.arrayBuffer().catch(() => undefined);
+      await sleep(retryAfterMs(res, 1000 * (attempt + 1)));
       continue;
     }
     throw new HttpError(res.status, `HTTP ${res.status}: ${new URL(url).host}`);

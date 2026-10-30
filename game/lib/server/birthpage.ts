@@ -1,9 +1,10 @@
 // 日本語版 Wikipedia の日付ページ（「8月13日」など）の「誕生日」の節から、その日生まれの人物を取る。
 // 人が選んで載せている一覧なので、全員ではなく「その日生まれの著名な人」の一覧になる。
 
-import { fetchJson } from "./http";
+import { fetchText } from "./http";
 
 export const JA_API = process.env.JA_WIKIPEDIA_API ?? "https://ja.wikipedia.org/w/api.php";
+const JA_INDEX = process.env.JA_WIKIPEDIA_INDEX ?? "https://ja.wikipedia.org/w/index.php";
 
 export interface BirthEntry {
   /** リンク先の記事名（リダイレクトの解決前） */
@@ -14,23 +15,10 @@ export interface BirthEntry {
   note: string | null;
 }
 
-interface ParseResponse {
-  parse?: { wikitext?: string };
-  error?: { info?: string };
-}
-
 export async function fetchBirthEntries(month: number, day: number): Promise<BirthEntry[]> {
-  const params = new URLSearchParams({
-    action: "parse",
-    page: `${month}月${day}日`,
-    prop: "wikitext",
-    redirects: "1",
-    format: "json",
-    formatversion: "2",
-  });
-  const data = await fetchJson<ParseResponse>(`${JA_API}?${params}`, { timeoutMs: 20_000, retries: 2 });
-  const wikitext = data.parse?.wikitext;
-  if (!wikitext) throw new Error(`Wikipedia の「${month}月${day}日」のページを読めませんでした`);
+  // ページの生の wikitext（action=raw）はキャッシュから返るので速く、API の回数制限にもかかりにくい
+  const params = new URLSearchParams({ title: `${month}月${day}日`, action: "raw" });
+  const wikitext = await fetchText(`${JA_INDEX}?${params}`, { timeoutMs: 20_000, retries: 2 });
   const entries = parseBirths(wikitext);
   if (entries.length === 0) throw new Error(`Wikipedia の「${month}月${day}日」のページに誕生日の一覧が見つかりませんでした`);
   return entries;
@@ -74,8 +62,10 @@ function findYear(s: string): number | null {
 }
 
 function parseLine(line: string): BirthEntry | null {
-  // 「年 - 人物、説明」の形。区切りの前が年、後ろが人物
-  const sep = /\s[-–—]\s/.exec(line);
+  // 「年 - 人物、説明」の形。区切りの前が年、後ろが人物。
+  // 「（享保4年6月28日）- 人物」のように前に空白がないこともある。リンクの中の「-」は区切りにしない
+  const masked = line.replace(/\[\[[^\]]*\]\]/g, (m) => "x".repeat(m.length));
+  const sep = /\s*[-–—]\s+/.exec(masked);
   const before = sep ? line.slice(0, sep.index) : "";
   const after = sep ? line.slice(sep.index + sep[0].length) : line;
 

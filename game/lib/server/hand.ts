@@ -29,9 +29,14 @@ export async function buildHand(month: number, day: number, now = new Date()): P
   const mmdd = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
   const entries = await fetchBirthEntries(month, day);
-  const resolved = await resolveTitles(entries.map((e) => e.title));
+  // 混雑で取れなかった人数（その人だけ手札から抜ける）
+  const report = { failed: 0 };
+  const resolved = await resolveTitles(
+    entries.map((e) => e.title),
+    report,
+  );
   const qids = [...new Set([...resolved.values()].map((r) => r.qid))];
-  const details = await getPersonDetails(qids);
+  const details = await getPersonDetails(qids, report);
   const occupationIds = [...new Set([...details.values()].flatMap((d) => d.occupations))];
   const { ancestors, labels } = occupationIds.length
     ? await getOccupationInfo(occupationIds)
@@ -46,6 +51,8 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     const d = details.get(r.qid);
     if (!d || !d.isHuman) continue;
     seen.add(r.qid);
+    // 閲覧数は今の記事名で数える（Wikidata に登録されている日本語版の記事名を優先）
+    const jaTitle = d.jaTitle ?? r.title;
 
     // 生年月日: Wikidata の日付が同じ月日ならそれを使い、違えば（旧暦・ユリウス暦の違いなど）
     // 一覧に書かれた年とこの月日を使う
@@ -55,7 +62,7 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     const occupations = d.occupations;
     people.push({
       id: r.qid,
-      name: d.name ?? r.title.replace(/\s*[（(][^）)]*[）)]\s*$/, ""),
+      name: d.name ?? jaTitle.replace(/\s*[（(][^）)]*[）)]\s*$/, ""),
       nameLang: d.name ? d.nameLang : "ja",
       nameRoman: d.nameRoman,
       description,
@@ -64,8 +71,8 @@ export async function buildHand(month: number, day: number, now = new Date()): P
       occupations: occupations.map((id) => ({ id, label: labels.get(id) ?? id })),
       categories: classify(occupations, ancestors),
       sensitive: sensitiveReason(occupations, description, ancestors),
-      jaTitle: r.title,
-      jaUrl: jaWikipediaUrl(r.title),
+      jaTitle,
+      jaUrl: jaWikipediaUrl(jaTitle),
       wikidataUrl: `https://www.wikidata.org/wiki/${r.qid}`,
       image: d.imageFile ? (images.get(d.imageFile) ?? null) : null,
       score: { status: "not-fetched" },
@@ -89,8 +96,8 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     period,
     fetchedAt: now.toISOString(),
     people,
-    truncated: false,
-    totalFound: people.length,
+    truncated: report.failed > 0,
+    totalFound: people.length + report.failed,
   };
 }
 
@@ -105,7 +112,8 @@ export async function getHand(month: number, day: number, now = new Date()): Pro
   if (!job) {
     job = buildHand(month, day, now)
       .then(async (hand) => {
-        await writeCache(key, hand);
+        // 一部の人を取れなかった手札は保存しない（次に開いたときに、もう一度全員を取りに行く）
+        if (!hand.truncated) await writeCache(key, hand);
         return hand;
       })
       .finally(() => inflight.delete(key));

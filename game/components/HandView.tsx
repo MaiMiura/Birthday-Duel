@@ -120,8 +120,8 @@ export default function HandView({
         {demo && <Notice>デモモードです。人物は架空で、知名度スコアはデモ値です。</Notice>}
         {hand.truncated && (
           <Notice>
-            人数が多いため、記事のある言語数が多い順に {hand.people.length.toLocaleString()} 人まで表示しています（全{" "}
-            {hand.totalFound.toLocaleString()} 人中）。一覧は全員ではありません。
+            Wikipedia・Wikidata が混雑していて、{(hand.totalFound - hand.people.length).toLocaleString()}{" "}
+            人分を読み込めませんでした。一覧は全員ではありません。時間をおいて開き直すと増えることがあります。
           </Notice>
         )}
         {failedCount > 0 && (
