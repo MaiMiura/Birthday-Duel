@@ -4,7 +4,8 @@
 //
 //   npm run build-occupation-map -- 8-13 10-29     指定した誕生日の人物の職業を足す
 //   npm run build-occupation-map -- --all          366 日分（とても時間がかかる）
-//   npm run build-occupation-map -- --rebuild 8-13 表を作り直す（categories.ts の根っこを変えたとき）
+//   npm run build-occupation-map -- --refresh      表にある職業を、今の categories.ts で分類し直す
+//                                                  （根っこを変えたとき。人物は取り直さないので速い）
 //
 // 混雑で取れなかった分は、少し待ってから取り直す。
 
@@ -16,7 +17,7 @@ import { getOccupationInfo, getPersonDetails, resolveTitles } from "../lib/serve
 
 const MAP_FILE = path.join(import.meta.dirname, "..", "lib", "occupation-map.json");
 const args = process.argv.slice(2);
-const rebuild = args.includes("--rebuild");
+const refresh = args.includes("--refresh");
 let days: Birthday[] = [];
 if (args.includes("--all")) {
   for (let month = 1; month <= 12; month++) for (let day = 1; day <= daysInMonth(month); day++) days.push({ month, day });
@@ -27,16 +28,16 @@ if (args.includes("--all")) {
     return b;
   });
 }
-if (days.length === 0) {
-  console.error("使い方: npm run build-occupation-map -- 10-29 [8-13 ...] | --all  [--rebuild]");
+if (days.length === 0 && !refresh) {
+  console.error("使い方: npm run build-occupation-map -- 10-29 [8-13 ...] | --all | --refresh");
   process.exit(1);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Row = { label: string; roots: string[] };
-const map: Record<string, Row> = rebuild ? {} : JSON.parse(readFileSync(MAP_FILE, "utf8"));
+const map: Record<string, Row> = JSON.parse(readFileSync(MAP_FILE, "utf8"));
 
-const occupations = new Set<string>();
+const occupations = new Set<string>(refresh ? Object.keys(map) : []);
 for (const b of days) {
   for (let attempt = 1; ; attempt++) {
     try {
@@ -62,7 +63,7 @@ for (const b of days) {
   }
 }
 
-let todo = [...occupations].filter((id) => rebuild || !map[id]);
+let todo = [...occupations].filter((id) => refresh || !map[id]);
 console.log(`上位分類をたどる職業: ${todo.length} 件`);
 for (let round = 1; todo.length && round <= 6; round++) {
   const info = await getOccupationInfo(todo, { useStaticMap: false });

@@ -45,6 +45,8 @@ npm run build && npm run start   # 本番用
 | `npm run typecheck` / `npm run lint` | 型チェック / lint |
 | `npm run prefetch -- 10-29 2-29` | 指定した誕生日の手札を前もって取得してキャッシュする（`--all` で 366 日分） |
 | `npm run check-categories` | カテゴリー分類に使う職業 Q-ID の、Wikidata 上の現在の名前を表示する |
+| `npm run build-occupation-map -- 8-13 1-1` | 職業 → カテゴリーの表（`lib/occupation-map.json`）に、指定した誕生日の人物の職業を足す |
+| `npm run build-occupation-map -- --refresh` | `lib/categories.ts` を変えたあと、表の職業を分類し直す |
 
 ## 画面
 
@@ -80,7 +82,8 @@ npm run build && npm run start   # 本番用
 - 人物の職業（P106）が上の職業そのものか、P279（下位分類）をたどってそこに着けば、そのカテゴリーに入れます。職業名の文字列一致は使いません。
 - 複数の分野で活動する人は、複数のカテゴリーに出ます。
 - どこにも当てはまらない人（作家、画家など）は無理に割り当てません。図鑑タブには「部門なし」として出ますが、勝負には使えません。
-- ルールは `lib/categories.ts` にまとまっています。Q-ID を足したり除いたりするだけで変更できます。変更したら `npm run check-categories` で、意図した職業を指しているか確認してください。
+- ルールは `lib/categories.ts` にまとまっています。Q-ID を足したり除いたりするだけで変更できます。変更したら `npm run check-categories` で、意図した職業を指しているか確認し、`npm run build-occupation-map -- --refresh` で職業の表を作り直してください。
+- **職業の表:** 職業ごとに「どの根っこにたどり着くか」を前もって調べた表（`lib/occupation-map.json`）をアプリに同梱しています。表にある職業は Wikidata に問い合わせずに分類できるので、手札を作るときの問い合わせが大きく減ります。表にない職業だけ、その場で上位分類をたどります。今の表は、実際の日付ページ 7 日分（8/13・10/29・12/25・2/29・1/1・5/5・7/7）に出てきた 629 種類の職業から作りました。
 
 ## データの取り方
 
