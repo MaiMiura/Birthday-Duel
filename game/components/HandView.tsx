@@ -11,13 +11,6 @@ import { CardVisual, CategoryLabel, GhostButton, LimeButton, Signature, TopBar }
 
 export type Tab = CategoryId | "all";
 
-const TIMING_LABELS: Record<string, string> = {
-  page: "一覧",
-  people: "人物",
-  occupations: "職業",
-  images: "写真",
-};
-
 export default function HandView({
   hand,
   tab,
@@ -197,15 +190,6 @@ export default function HandView({
       <footer className="mt-6 text-[0.7rem] leading-relaxed text-ink-soft">
         知名度スコアは日本語版 Wikipedia の閲覧数をもとにした指標です。集計期間 {formatPeriod(hand.period)}
         （UTC）・データ取得日 {formatDateTime(hand.fetchedAt)}。人物データ: Wikipedia・Wikidata（CC0）。
-        {hand.timings && (
-          <span className="mt-1 block">
-            読み込み {(Object.values(hand.timings).reduce((a, b) => a + b, 0) / 1000).toFixed(1)} 秒（
-            {Object.entries(hand.timings)
-              .map(([k, v]) => `${TIMING_LABELS[k] ?? k} ${(v / 1000).toFixed(1)}`)
-              .join(" / ")}
-            ）
-          </span>
-        )}
       </footer>
 
       {tab !== "all" && people.length > 0 && (
