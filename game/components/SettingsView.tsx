@@ -10,6 +10,7 @@ export default function SettingsView({
   onChange,
   onResetBirthday,
   onBack,
+  onShare,
 }: {
   settings: Settings;
   demo: boolean;
@@ -17,6 +18,7 @@ export default function SettingsView({
   onChange: (s: Settings) => void;
   onResetBirthday: () => void;
   onBack: () => void;
+  onShare: () => void;
 }) {
   const restore = (id: string) => {
     const hiddenNames = { ...settings.hiddenNames };
@@ -66,6 +68,7 @@ export default function SettingsView({
         )}
       </section>
 
+      <GhostButton onClick={onShare}>みんなを招待（QRコード）</GhostButton>
       {hasBirthday && <GhostButton onClick={onResetBirthday}>誕生日をリセット</GhostButton>}
       <LimeButton onClick={onBack} arrow={false}>
         戻る

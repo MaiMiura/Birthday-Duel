@@ -48,17 +48,19 @@ export function DemoPill() {
   );
 }
 
-/** 画面上部: 左にロゴか戻るボタン、右にメニュー（デモモードのときは DEMO の印も） */
+/** 画面上部: 左にロゴか戻るボタン、右に共有（QR）とメニュー（デモモードのときは DEMO の印も） */
 export function TopBar({
   demo,
   onBack,
   onMenu,
+  onShare,
   center,
   logo = "sm",
 }: {
   demo: boolean;
   onBack?: () => void;
   onMenu?: () => void;
+  onShare?: () => void;
   center?: React.ReactNode;
   logo?: "sm" | "md" | false;
 }) {
@@ -76,6 +78,17 @@ export function TopBar({
       {center && <div className="text-center">{center}</div>}
       <div className="flex min-w-11 items-center justify-end gap-2">
         {demo && <DemoPill />}
+        {onShare && (
+          <button
+            type="button"
+            onClick={onShare}
+            aria-label="みんなを招待（QRコード）"
+            className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface px-3 text-xs font-black"
+          >
+            <QrIcon />
+            招待
+          </button>
+        )}
         {onMenu && (
           <button
             type="button"
@@ -90,6 +103,14 @@ export function TopBar({
         )}
       </div>
     </div>
+  );
+}
+
+function QrIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="currentColor">
+      <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h2v2h-2zm4 0h4v2h-4zm-4 4h2v4h-2zm4 0h2v2h-2zm2 2h2v2h-2zm-2 2h2v-2h-2z" />
+    </svg>
   );
 }
 

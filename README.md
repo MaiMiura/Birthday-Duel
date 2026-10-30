@@ -42,7 +42,7 @@ python3 birthday_people.py 10-29 歌手 --sort sitelinks   # 世界的な知名�
 
 自分と同じ誕生日の有名人を手札にして、その場の仲間と知名度（日本語版 Wikipedia の閲覧数）で勝負する、飲み会向けの Web アプリです。Next.js で作っています。
 
-- 公開中: https://birthday-duel-game.vercel.app
+- 公開中: https://birthday-duel-game.vercel.app（QR コード: [share/share-card.png](share/share-card.png)、[share/qr.png](share/qr.png)）
 - 遊び方・起動方法・データの取り方は [game/README.md](game/README.md) を見てください。
 
 人物の一覧は、上の `birthday_people.py` とは違い、日本語版 Wikipedia の日付ページ（「8月13日」など）の「誕生日」の節から取っています（Wikidata のクエリサービスは、重くて時間切れになるため使っていません）。

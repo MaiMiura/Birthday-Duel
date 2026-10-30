@@ -23,6 +23,7 @@ import BirthdayForm from "./BirthdayForm";
 import DuelView from "./DuelView";
 import HandView, { type Tab } from "./HandView";
 import SettingsView from "./SettingsView";
+import ShareSheet from "./ShareSheet";
 import { GhostButton, LimeButton, TopBar } from "./ui";
 
 type Load =
@@ -89,6 +90,8 @@ export default function Game() {
   const [roundCategory, setRoundCategory] = useState<CategoryId | null>(null);
   // 「このカードで勝負」を押してから、その人のスコアを取り終えるまで
   const [choosing, setChoosing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const openShare = () => setShareOpen(true);
   const [chooseError, setChooseError] = useState<string | null>(null);
   // 設定画面を閉じたときに戻る画面
   const [settingsFrom, setSettingsFrom] = useState<Screen>("hand");
@@ -248,6 +251,7 @@ export default function Game() {
           setScreen("birthday");
         }}
         onBack={() => setScreen(birthday ? settingsFrom : "birthday")}
+        onShare={openShare}
       />
     );
   } else if (screen === "birthday" || !birthday) {
@@ -261,6 +265,7 @@ export default function Game() {
           setSettingsFrom("birthday");
           setScreen("settings");
         }}
+        onShare={openShare}
       />
     );
   } else if (screen === "duel" && selection) {
@@ -309,6 +314,7 @@ export default function Game() {
           setScreen("settings");
         }}
         onRetryScores={retryScores}
+        onShare={openShare}
         choosing={choosing}
         chooseError={chooseError}
       />
@@ -330,7 +336,12 @@ export default function Game() {
     );
   }
 
-  return <div data-reduce-motion={settings.reduceMotion}>{view}</div>;
+  return (
+    <div data-reduce-motion={settings.reduceMotion}>
+      {view}
+      {shareOpen && <ShareSheet onClose={() => setShareOpen(false)} />}
+    </div>
+  );
 }
 
 function StatusScreen({

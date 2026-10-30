@@ -17,12 +17,14 @@ export default function BirthdayForm({
   onSubmit,
   onCancel,
   onMenu,
+  onShare,
 }: {
   initial: Birthday | null;
   demo: boolean;
   onSubmit: (b: Birthday) => void;
   onCancel?: () => void;
   onMenu: () => void;
+  onShare: () => void;
 }) {
   const [month, setMonth] = useState(initial?.month ?? 0);
   const [day, setDay] = useState(initial?.day ?? 0);
@@ -35,7 +37,7 @@ export default function BirthdayForm({
       {/* 右下へ走るライムの帯 */}
       <span aria-hidden className="lime-slash pointer-events-none absolute top-52 -right-24 h-80 w-80 opacity-80" />
 
-      <TopBar demo={demo} onBack={onCancel} logo="md" onMenu={onMenu} />
+      <TopBar demo={demo} onBack={onCancel} logo="md" onMenu={onMenu} onShare={onShare} />
 
       <h1 className="relative mt-6 text-[2.6rem] leading-[1.15] font-black">
         <span className="slant">誕生日が、</span>

@@ -26,6 +26,7 @@ export default function HandView({
   onChangeBirthday,
   onSettings,
   onRetryScores,
+  onShare,
   choosing = false,
   chooseError = null,
 }: {
@@ -44,6 +45,7 @@ export default function HandView({
   onChangeBirthday: () => void;
   onSettings: () => void;
   onRetryScores: () => void;
+  onShare: () => void;
   /** 選んだ人のスコアを取っているところ */
   choosing?: boolean;
   chooseError?: string | null;
@@ -66,7 +68,7 @@ export default function HandView({
 
   return (
     <main className="mx-auto min-h-dvh max-w-2xl px-4 pt-3 pb-32">
-      <TopBar demo={demo} onMenu={onSettings} />
+      <TopBar demo={demo} onMenu={onSettings} onShare={onShare} />
 
       <header className="mt-3 flex items-end justify-between gap-3">
         <div>
