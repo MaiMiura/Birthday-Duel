@@ -10,9 +10,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/*.test.mts",
-    "prefetch": "tsx scripts/prefetch.mts",
     "check-categories": "tsx scripts/check-categories.mts",
-    "build-occupation-map": "tsx scripts/build-occupation-map.mts"
+    "build-occupation-map": "tsx scripts/build-occupation-map.mts",
+    "build-hands": "tsx scripts/build-hands.mts"
   },
   "dependencies": {
     "next": "16.4.3",

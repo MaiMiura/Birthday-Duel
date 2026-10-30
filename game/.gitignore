@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# 誕生日ごとの手札キャッシュ（npm run prefetch や実行時に作られる）
+# 誕生日ごとの手札キャッシュ（サーバーが実行時に作る。配る手札は public/hands/）
 /data/hands/

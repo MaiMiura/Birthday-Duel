@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { birthdayKey, formatBirthday, type Birthday } from "@/lib/birthday";
 import { CATEGORIES } from "@/lib/categories";
+import { scorePeriod } from "@/lib/period";
 import { DEMO_BIRTHDAYS, getDemoHand } from "@/lib/demo";
 import { selectCard, visiblePeople, type FetchedScore } from "@/lib/game";
 import {
@@ -36,7 +37,26 @@ type Screen = "birthday" | "hand" | "duel" | "settings";
 // サーバーは最大 300 秒まで待つ設定だが、その場で待てる長さで打ち切って再試行を案内する
 const CLIENT_TIMEOUT_MS = 150_000;
 
+/**
+ * 前もって作った手札（public/hands/<月-日>.json、GitHub Actions で作って配っている）。
+ * なければ null（その場で作る）。集計期間は、読んだ時点のものにそろえる。
+ */
+async function fetchPrebuiltHand(b: Birthday): Promise<Hand | null> {
+  try {
+    const res = await fetch(`/hands/${birthdayKey(b)}.json`, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    const hand = (await res.json()) as Hand;
+    return Array.isArray(hand.people) ? { ...hand, period: scorePeriod() } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchLiveHand(b: Birthday, retry: boolean): Promise<Hand> {
+  if (!retry) {
+    const prebuilt = await fetchPrebuiltHand(b);
+    if (prebuilt) return prebuilt;
+  }
   const res = await fetch(`/api/hand?date=${birthdayKey(b)}${retry ? "&retry=1" : ""}`, {
     signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
   });
