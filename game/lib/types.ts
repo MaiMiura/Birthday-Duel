@@ -59,7 +59,13 @@ export interface Person {
   /** ユリウス暦で記録された日付をグレゴリオ暦に換算したもの */
   julian: boolean;
   occupations: Occupation[];
+  /**
+   * 勝負に出せるカテゴリー。前もって作った手札（上位 N 人に絞ったもの）では、
+   * 閲覧数でそのカテゴリーの上位に入ったカテゴリーだけになる
+   */
   categories: CategoryId[];
+  /** 上位に絞った手札で、絞る前のカテゴリー（表示用）。絞っていない手札にはない */
+  allCategories?: CategoryId[];
   /** 「センシティブな人物を隠す」設定で隠す理由（なければ null） */
   sensitive: string | null;
   jaTitle: string | null;
@@ -83,6 +89,8 @@ export interface Hand {
   totalFound: number;
   /** 手札を作るのにかかった時間（ミリ秒、段階ごと）。遅いときにどこが遅いかを見るため */
   timings?: Record<string, number>;
+  /** カテゴリーごとに閲覧数の上位 N 人に絞った手札なら、その人数と、順位に使った集計期間 */
+  ranked?: { perCategory: number; period: ScorePeriod };
 }
 
 /** 「このカードで勝負」を押した時点で固定するカードの中身。 */

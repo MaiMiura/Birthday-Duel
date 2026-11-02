@@ -133,8 +133,12 @@ export default function HandView({
         )}
         <p className="text-xs text-ink-soft">
           {tab !== "all"
-            ? `${categoryRule(tab).examples}。カードをタップして選び、下のボタンで勝負。`
-            : "同じ誕生日の人物の一覧です。勝負に出すときは、カテゴリーのタブから選んでください。"}
+            ? `${categoryRule(tab).examples}。${
+                hand.ranked ? `日本語版 Wikipedia の閲覧数の上位 ${hand.ranked.perCategory} 人です。` : ""
+              }カードをタップして選び、下のボタンで勝負。`
+            : `同じ誕生日の人物の一覧です${
+                hand.ranked ? `（カテゴリーの上位 ${hand.ranked.perCategory} 人に入らなかった人も含みます）` : ""
+              }。勝負に出すときは、カテゴリーのタブから選んでください。`}
         </p>
         {demo && <Notice>デモモードです。人物は架空で、知名度スコアはデモ値です。</Notice>}
         {hand.truncated && (
@@ -275,7 +279,7 @@ function PersonTile({
   onInfo: () => void;
 }) {
   const state = cardState(person, tab);
-  const cat = tab !== "all" ? tab : person.categories[0];
+  const cat = tab !== "all" ? tab : (person.allCategories ?? person.categories)[0];
   return (
     <div
       className={`relative h-full overflow-hidden rounded-2xl bg-surface p-1.5 shadow-sm transition ${
@@ -364,7 +368,7 @@ function DetailSheet({
         </div>
         <div className="space-y-3 p-5">
           <div className="flex flex-wrap gap-3">
-            {person.categories.map((c) => (
+            {(person.allCategories ?? person.categories).map((c) => (
               <CategoryLabel key={c} id={c} mark />
             ))}
           </div>

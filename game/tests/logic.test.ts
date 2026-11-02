@@ -149,3 +149,16 @@ describe("選んだときにスコアを取るカード", () => {
     assert.throws(() => selectCard(hand, person, person.categories[0], now));
   });
 });
+
+describe("上位に絞った手札のカード", () => {
+  const hand = getDemoHand(10, 29, new Date("2026-10-29T00:00:00Z"))!;
+  it("上位に入らなかった人は「上位外」で、部門なしとは分ける", () => {
+    const out = { ...hand.people[0], categories: [], allCategories: hand.people[0].categories };
+    const state = cardState(out, "all");
+    assert.equal(state.playable, false);
+    assert.equal(!state.playable && state.label, "上位外");
+    const none = { ...hand.people[0], categories: [] };
+    const state2 = cardState(none, "all");
+    assert.equal(!state2.playable && state2.label, "部門なし");
+  });
+});

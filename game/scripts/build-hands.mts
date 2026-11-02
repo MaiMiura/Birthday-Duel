@@ -1,18 +1,22 @@
 // 誕生日ごとの手札（人物・カテゴリー・写真）を前もって作り、public/hands/<月-日>.json に書き出す。
 // アプリはこのファイルがあればそれを読む（誕生日を入れてすぐ手札が出る）。なければその場で作る。
-// 知名度スコアは入れない（「このカードで勝負」を押したときに 1 人分だけ取る）。
+// 各カテゴリーは、日本語版 Wikipedia の閲覧数で上位 20 人に絞る（図鑑では全員見られる）。
+// 閲覧数そのものは入れない（「このカードで勝負」を押したときに、その時点の値を 1 人分だけ取る）。
 //
 //   npm run build-hands -- 10-29 2-29        指定した誕生日
 //   npm run build-hands -- --month 1          1 月の全日
 //   npm run build-hands -- --all              366 日すべて
 //   --force を付けると、すでにあるファイルも作り直す（付けなければ、ない日だけ作る）
 //
-// 一部の人を取れなかった日（混雑など）はファイルを書かず、次に実行したときに作り直す。
+// 一部の人を取れなかった日や、閲覧数を取れなかった人が多い日（混雑など）はファイルを書かない
+// （前のファイルがあればそのまま残る）。次に実行したときに作り直す。
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { birthdayKey, daysInMonth, parseBirthday, type Birthday } from "../lib/birthday";
-import { buildHand } from "../lib/server/hand";
+import { buildHand, rankHand } from "../lib/server/hand";
+
+const PER_CATEGORY = 20;
 
 const OUT_DIR = path.join(import.meta.dirname, "..", "public", "hands");
 const args = process.argv.slice(2);
@@ -54,16 +58,25 @@ for (const b of days) {
   }
   const started = Date.now();
   try {
-    const hand = await buildHand(b.month, b.day);
-    if (hand.truncated) {
-      failed.push(`${key}（${hand.totalFound - hand.people.length} 人を取れず）`);
+    const built = await buildHand(b.month, b.day);
+    if (built.truncated) {
+      failed.push(`${key}（${built.totalFound - built.people.length} 人を取れず）`);
       console.log(`${key}: 一部を取れなかったので書き出しません`);
+      continue;
+    }
+    const { hand, failedScores } = await rankHand(built, { perCategory: PER_CATEGORY });
+    const candidates = built.people.filter((p) => p.categories.length > 0).length;
+    // 閲覧数を取れなかった人が多いと、上位 20 人が正しく選べないので書かない
+    if (failedScores > Math.max(3, candidates * 0.05)) {
+      failed.push(`${key}（閲覧数を ${failedScores} 人取れず）`);
+      console.log(`${key}: 閲覧数を ${failedScores}/${candidates} 人取れなかったので書き出しません`);
       continue;
     }
     // 段階ごとの時間は、配るファイルには要らない
     writeFileSync(file, JSON.stringify({ ...hand, timings: undefined }));
     written++;
-    console.log(`${key}: ${hand.people.length} 人 ${((Date.now() - started) / 1000).toFixed(1)} 秒`);
+    const inHand = hand.people.filter((p) => p.categories.length > 0).length;
+    console.log(`${key}: ${hand.people.length} 人（勝負に出せる ${inHand} 人） ${((Date.now() - started) / 1000).toFixed(1)} 秒`);
   } catch (e) {
     failed.push(`${key}（${(e as Error).message}）`);
     console.log(`${key}: 失敗 ${(e as Error).message}`);

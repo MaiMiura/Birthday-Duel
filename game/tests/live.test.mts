@@ -10,7 +10,7 @@ process.env.HAND_CACHE_DIR = mkdtempSync(path.join(os.tmpdir(), "bduel-test-"));
 
 const { fetchViews } = await import("../lib/server/pageviews");
 const { toPersonImage } = await import("../lib/server/images");
-const { getHand } = await import("../lib/server/hand");
+const { getHand, rankHand } = await import("../lib/server/hand");
 const { clearMemoryCache } = await import("../lib/server/cache");
 const { parseBirths } = await import("../lib/server/birthpage");
 const { resetThrottle } = await import("../lib/server/wikidata");
@@ -396,5 +396,68 @@ describe("手札の組み立て（モック）", () => {
     assert.equal(again.people.length, 4);
     assert.equal(again.truncated, false);
     assert.equal(pageReads, 2);
+  });
+});
+
+describe("閲覧数で上位に絞る（前もって作る手札）", () => {
+  const person = (id: string, title: string, categories: string[]) => ({
+    id,
+    name: title,
+    nameLang: "ja",
+    nameRoman: null,
+    description: null,
+    birthDate: "1990-01-01",
+    julian: false,
+    occupations: [],
+    categories,
+    sensitive: null,
+    jaTitle: title,
+    jaUrl: null,
+    wikidataUrl: "",
+    image: null,
+    score: { status: "pending" },
+  });
+  const VIEWS: Record<string, number> = { A: 500, B: 300, C: 100, D: 900 };
+
+  it("カテゴリーごとに閲覧数の多い順で上位だけ残し、外れた人は「上位外」にする", async () => {
+    mockFetch((url) => {
+      const title = decodeURIComponent(url.pathname.split("/user/")[1].split("/")[0]);
+      if (title === "E") return json({}, 500); // 取れない人
+      return json({ items: [{ timestamp: "2026010100", views: VIEWS[title] }] });
+    });
+    const hand = {
+      mode: "live" as const,
+      month: 1,
+      day: 1,
+      period,
+      fetchedAt: NOW.toISOString(),
+      truncated: false,
+      totalFound: 6,
+      people: [
+        person("Q1", "A", ["music"]),
+        person("Q2", "B", ["music", "entertainment"]),
+        person("Q3", "C", ["music"]),
+        person("Q4", "D", ["entertainment"]),
+        person("Q5", "E", ["music"]),
+        person("Q6", "F", []), // 部門なしの人は閲覧数を取らない
+      ],
+    } as unknown as Parameters<typeof rankHand>[0];
+
+    const { hand: ranked, failedScores } = await rankHand(hand, { perCategory: 2, now: NOW });
+    const byId = (id: string) => ranked.people.find((p) => p.id === id)!;
+    assert.equal(failedScores, 1);
+    assert.deepEqual(ranked.ranked, { perCategory: 2, period });
+    assert.deepEqual(byId("Q1").categories, ["music"]); // 音楽 1 位
+    assert.deepEqual(byId("Q2").categories, ["music", "entertainment"]); // 音楽 2 位・芸能 2 位
+    assert.deepEqual(byId("Q2").allCategories, ["music", "entertainment"]);
+    assert.deepEqual(byId("Q3").categories, []); // 音楽 3 位 → 上位外
+    assert.deepEqual(byId("Q3").allCategories, ["music"]);
+    assert.deepEqual(byId("Q4").categories, ["entertainment"]);
+    assert.deepEqual(byId("Q5").categories, []); // 閲覧数を取れなかった人は上位に入れない
+    assert.deepEqual(byId("Q6").categories, []);
+    assert.equal(byId("Q6").allCategories, undefined);
+    assert.ok(!calls.some((c) => c.includes("/F/")));
+    // 閲覧数そのものは手札に入れない
+    assert.ok(ranked.people.every((p) => p.score.status !== "ok"));
   });
 });

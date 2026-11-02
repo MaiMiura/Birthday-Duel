@@ -13,7 +13,9 @@ export function cardState(person: Person, category: CategoryId | "all"): CardSta
     return { playable: false, label: "スコア対象外", detail: "日本語版 Wikipedia の記事がないため、勝負には使えません。" };
   }
   if (person.categories.length === 0) {
-    return { playable: false, label: "部門なし", detail: "どのカテゴリーにも入らないため、勝負には使えません。" };
+    return person.allCategories?.length
+      ? { playable: false, label: "上位外", detail: "閲覧数でカテゴリーの上位に入らなかったため、勝負には使えません。" }
+      : { playable: false, label: "部門なし", detail: "どのカテゴリーにも入らないため、勝負には使えません。" };
   }
   if (s.status === "pending") {
     // まだ取っていないだけ。選んだときに取って、取れなければ勝負に使えない

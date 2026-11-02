@@ -1,0 +1,63 @@
+# 誕生日ごとの手札ファイル（game/public/hands/<月-日>.json）を作って、このブランチに保存する。
+# 各カテゴリーは、日本語版 Wikipedia の閲覧数（直近 12 か月）で上位 20 人に絞る。
+# アプリはこのファイルがあれば、誕生日を入れてすぐ手札を出せる（なければその場で作る）。
+#
+# - 手動: Actions タブ →「Build birthday hands」→「Run workflow」
+# - 自動: 毎月 3 日に全日を作り直す（その月の閲覧数で上位 20 人を選び直し、Wikipedia・Wikidata の更新も取り込む）
+# 1 か月分ずつ保存するので、途中で止まっても、作り終えた月は残る。
+# 混雑で作れなかった日は、前のファイルがあればそのまま残る（なければ、その日はアプリがその場で作る）。
+
+name: Build birthday hands
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "すでにある日も作り直す"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 18 3 * *" # 毎月 3 日 18:17 UTC（日本時間 4 日 3:17）
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-hands
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - run: npm ci
+      - name: Build hands month by month
+        env:
+          FORCE: ${{ github.event_name == 'schedule' || inputs.force == true }}
+          WIKIMEDIA_USER_AGENT: "BirthdayDuel/0.1 (https://github.com/${{ github.repository }}; GitHub Actions monthly build)"
+          # 閲覧数 API への同時リクエスト数（Wikimedia に負担をかけすぎない程度）
+          PAGEVIEWS_CONCURRENCY: "6"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          flag=""
+          if [ "$FORCE" = "true" ]; then flag="--force"; fi
+          for month in $(seq 1 12); do
+            npx tsx scripts/build-hands.mts --month "$month" $flag || true
+            git add public/hands
+            if ! git diff --cached --quiet; then
+              git commit -q -m "Update birthday hands for month $month"
+              git pull -q --rebase origin "${GITHUB_REF_NAME}"
+              git push -q origin "HEAD:${GITHUB_REF_NAME}"
+            fi
+          done

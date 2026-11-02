@@ -5,7 +5,8 @@
 import { birthdayKey } from "../birthday";
 import { classify, sensitiveReason } from "../classify";
 import { periodKey, scorePeriod } from "../period";
-import type { Hand, Person } from "../types";
+import { CATEGORY_IDS } from "../categories";
+import type { CategoryId, Hand, Person } from "../types";
 import { fetchBirthEntries } from "./birthpage";
 import { readCache, writeCache } from "./cache";
 import { fetchImages } from "./images";
@@ -105,6 +106,50 @@ export async function buildHand(month: number, day: number, now = new Date()): P
     truncated: report.failed > 0,
     totalFound: people.length + report.failed,
     timings,
+  };
+}
+
+/**
+ * カテゴリーごとに、日本語版 Wikipedia の閲覧数で上位 perCategory 人に絞る（前もって作る手札用）。
+ * 上位に入ったカテゴリーだけを categories に残し、元のカテゴリーは allCategories に残す（図鑑では全員見られる）。
+ * 閲覧数そのものは手札に入れない（勝負のときに、その時点の値をあらためて取る）。
+ * 閲覧数を取れなかった人数を返す（多すぎるときは、その手札を配らない）。
+ */
+export async function rankHand(
+  hand: Hand,
+  { perCategory = 20, now = new Date() }: { perCategory?: number; now?: Date } = {},
+): Promise<{ hand: Hand; failedScores: number }> {
+  const period = scorePeriod(now);
+  const candidates = hand.people.filter((p) => p.categories.length > 0 && p.jaTitle);
+  const scores = await fetchViewsMany(
+    candidates.map((p) => p.jaTitle!),
+    period,
+    Number(process.env.PAGEVIEWS_CONCURRENCY ?? 6),
+  );
+  const views = new Map<string, number>();
+  candidates.forEach((p, i) => {
+    const s = scores[i];
+    if (s.status === "ok") views.set(p.id, s.views);
+  });
+  const top = new Map<string, Set<CategoryId>>();
+  for (const category of CATEGORY_IDS) {
+    candidates
+      .filter((p) => p.categories.includes(category) && views.has(p.id))
+      .sort((a, b) => views.get(b.id)! - views.get(a.id)! || a.id.localeCompare(b.id))
+      .slice(0, perCategory)
+      .forEach((p) => {
+        if (!top.has(p.id)) top.set(p.id, new Set());
+        top.get(p.id)!.add(category);
+      });
+  }
+  const people = hand.people.map((p) =>
+    p.categories.length === 0
+      ? p
+      : { ...p, allCategories: p.categories, categories: p.categories.filter((c) => top.get(p.id)?.has(c)) },
+  );
+  return {
+    hand: { ...hand, people, ranked: { perCategory, period } },
+    failedScores: candidates.length - views.size,
   };
 }
 
