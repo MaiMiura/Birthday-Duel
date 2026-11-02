@@ -6,21 +6,41 @@
 //   npm run build-hands -- 10-29 2-29        指定した誕生日
 //   npm run build-hands -- --month 1          1 月の全日
 //   npm run build-hands -- --all              366 日すべて
-//   --force を付けると、すでにあるファイルも作り直す（付けなければ、ない日だけ作る）
+//   付けるもの:
+//   （なし）    ファイルがない日だけ作る
+//   --stale     ファイルがない日と、今月の閲覧数で選び直していない（古い）日だけ作る（毎月の作り直し用）
+//   --force     すでにあるファイルも、すべて作り直す
 //
 // 一部の人を取れなかった日や、閲覧数を取れなかった人が多い日（混雑など）はファイルを書かない
 // （前のファイルがあればそのまま残る）。次に実行したときに作り直す。
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { birthdayKey, daysInMonth, parseBirthday, type Birthday } from "../lib/birthday";
+import { scorePeriod } from "../lib/period";
 import { buildHand, rankHand } from "../lib/server/hand";
+import type { Hand } from "../lib/types";
 
 const PER_CATEGORY = 20;
 
 const OUT_DIR = path.join(import.meta.dirname, "..", "public", "hands");
 const args = process.argv.slice(2);
 const force = args.includes("--force");
+const stale = args.includes("--stale");
+const currentPeriod = scorePeriod();
+
+/** すでにあるファイルを、今回は作らずにそのまま使うか */
+function upToDate(file: string): boolean {
+  if (force || !existsSync(file)) return false;
+  if (!stale) return true;
+  try {
+    // 今月の集計期間の閲覧数で上位を選んだファイルなら、作り直さない
+    const hand = JSON.parse(readFileSync(file, "utf8")) as Hand;
+    return hand.ranked?.period.end === currentPeriod.end;
+  } catch {
+    return false;
+  }
+}
 const monthArg = args.indexOf("--month");
 
 let days: Birthday[] = [];
@@ -41,7 +61,7 @@ if (args.includes("--all")) {
     });
 }
 if (days.length === 0) {
-  console.error("使い方: npm run build-hands -- 10-29 [2-29 ...] | --month 1 | --all  [--force]");
+  console.error("使い方: npm run build-hands -- 10-29 [2-29 ...] | --month 1 | --all  [--stale | --force]");
   process.exit(1);
 }
 
@@ -52,7 +72,7 @@ const failed: string[] = [];
 for (const b of days) {
   const key = birthdayKey(b);
   const file = path.join(OUT_DIR, `${key}.json`);
-  if (!force && existsSync(file)) {
+  if (upToDate(file)) {
     skipped++;
     continue;
   }

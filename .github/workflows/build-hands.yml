@@ -2,10 +2,13 @@
 # 各カテゴリーは、日本語版 Wikipedia の閲覧数（直近 12 か月）で上位 20 人に絞る。
 # アプリはこのファイルがあれば、誕生日を入れてすぐ手札を出せる（なければその場で作る）。
 #
-# - 手動: Actions タブ →「Build birthday hands」→「Run workflow」
-# - 自動: 毎月 3 日に全日を作り直す（その月の閲覧数で上位 20 人を選び直し、Wikipedia・Wikidata の更新も取り込む）
-# 1 か月分ずつ保存するので、途中で止まっても、作り終えた月は残る。
-# 混雑で作れなかった日は、前のファイルがあればそのまま残る（なければ、その日はアプリがその場で作る）。
+# - 自動: 毎月 3・4・5 日の夜に、まだ今月の閲覧数で選び直していない日（とファイルがない日）だけを作る。
+#   全日を作り直すには 8 時間ほどかかり、1 回の実行（最長 6 時間）では終わらないので、3 晩に分けて続きから作る。
+#   今月分がそろっていれば、その日の実行はすぐ終わる。
+# - 手動: Actions タブ →「Build birthday hands」→「Run workflow」（同じく、ない日・古い日だけ。
+#   「すでにある日も作り直す」にチェックすると全日を作り直す）
+# 1 か月分ずつ保存し、時間切れの前に自分で止まるので、作り終えた分は必ず残る。
+# 混雑で作れなかった日は、前のファイルがあればそのまま残り（なければ、その日はアプリがその場で作る）、次の実行で作り直す。
 
 name: Build birthday hands
 
@@ -17,7 +20,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "17 18 3 * *" # 毎月 3 日 18:17 UTC（日本時間 4 日 3:17）
+    - cron: "17 18 3,4,5 * *" # 毎月 3・4・5 日 18:17 UTC（日本時間 4・5・6 日 3:17）
 
 permissions:
   contents: write
@@ -43,16 +46,22 @@ jobs:
       - run: npm ci
       - name: Build hands month by month
         env:
-          FORCE: ${{ github.event_name == 'schedule' || inputs.force == true }}
+          FORCE: ${{ inputs.force == true }}
           WIKIMEDIA_USER_AGENT: "BirthdayDuel/0.1 (https://github.com/${{ github.repository }}; GitHub Actions monthly build)"
           # 閲覧数 API への同時リクエスト数（Wikimedia に負担をかけすぎない程度）
           PAGEVIEWS_CONCURRENCY: "6"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          flag=""
+          flag="--stale"
           if [ "$FORCE" = "true" ]; then flag="--force"; fi
+          started=$(date +%s)
           for month in $(seq 1 12); do
+            # 1 か月分にかかるのは 40〜50 分ほど。時間切れ（350 分）の前に、区切りのよいところで止める
+            if [ $(( $(date +%s) - started )) -gt $(( 270 * 60 )) ]; then
+              echo "時間が足りないので、${month} 月から先は次の実行で作ります"
+              break
+            fi
             npx tsx scripts/build-hands.mts --month "$month" $flag || true
             git add public/hands
             if ! git diff --cached --quiet; then
