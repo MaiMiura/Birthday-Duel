@@ -3,18 +3,22 @@
 import { CATEGORIES, categoryRule } from "@/lib/categories";
 import { approxViews, formatDateTime, formatViews, nextCategory } from "@/lib/game";
 import { formatPeriod } from "@/lib/period";
+import type { Birthday } from "@/lib/birthday";
 import type { CategoryId, SelectedCard } from "@/lib/types";
 import { CardVisual, CategoryLabel, LimeButton, Signature, TopBar } from "./ui";
 
 /** 公開待ち（裏面）と公開（表面）。カードをめくる演出でつなぐ。 */
 export default function DuelView({
   card,
+  birthday,
   revealed,
   onReveal,
   onReselect,
   onNext,
 }: {
   card: SelectedCard;
+  /** 持ち主の誕生日（公開待ちの画面に大きく出す）。なければカードの人物の誕生日 */
+  birthday: Birthday | null;
   revealed: boolean;
   onReveal: () => void;
   onReselect: () => void;
@@ -25,9 +29,13 @@ export default function DuelView({
   const rule = categoryRule(card.category);
   const { person } = card;
   const next = nextCategory(card.category);
+  const month = birthday?.month ?? Number(person.birthDate.slice(-5, -3));
+  const day = birthday?.day ?? Number(person.birthDate.slice(-2));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-3 pb-6">
+    // --wait-chrome: 公開待ちの画面で、カード以外（見出し・説明・ボタン）が使う高さ。カードをその残りに収めて、
+    // 「せーので公開」までスクロールせずに 1 画面で見えるようにする
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-3 pb-6 [--wait-chrome:23rem]">
       <TopBar
         demo={demo}
         onBack={revealed ? () => onNext(card.category) : onReselect}
@@ -40,11 +48,15 @@ export default function DuelView({
       />
 
       {!revealed && (
-        <div className="mt-6 text-center">
-          <h1 className="text-4xl font-black">
-            <span className="slant">準備はいい？</span>
+        <div className="mt-3 text-center">
+          {/* 見せ合ったときに誰の誕生日のカードか分かるように、日付を大きく出す */}
+          <h1 aria-label={`${month}月${day}日`} className="relative inline-block font-display text-7xl leading-none">
+            <span aria-hidden className="absolute inset-x-[-0.15em] bottom-[0.05em] h-[0.35em] -skew-x-12 bg-lime" />
+            <span aria-hidden className="slant relative">
+              {month}/{day}
+            </span>
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
             このカードで「{rule.label}」の勝負をします。
             <br />
             全員の準備ができたら、せーので公開しましょう。
@@ -52,19 +64,19 @@ export default function DuelView({
         </div>
       )}
 
-      <div className="flip-scene mt-5">
+      <div className={`flip-scene ${revealed ? "mt-5" : "mt-4"}`}>
         <div className={`flip-card grid ${revealed ? "is-flipped" : ""}`}>
           {/* 裏面: 名前もスコアも出さない */}
           <section
             aria-hidden={revealed}
-            className="flip-face col-start-1 row-start-1 mx-auto w-[86%] rounded-3xl bg-surface p-2 shadow-xl"
+            className="flip-face col-start-1 row-start-1 mx-auto w-[min(86%,max(9rem,calc((100dvh_-_var(--wait-chrome))*0.75)))] rounded-3xl bg-surface p-2 shadow-xl"
           >
-            <div className="card-back relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-2xl">
+            <div className="card-back @container relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-2xl">
               <span aria-hidden className="lime-slash absolute inset-0" />
-              <span aria-hidden className="slant relative font-display text-[9rem] leading-none text-[#f2efe6]">
+              <span aria-hidden className="slant relative font-display text-[min(9rem,50cqw)] leading-none text-[#f2efe6]">
                 B<span className="text-lime">/</span>D
               </span>
-              <span className="absolute bottom-4 left-4 font-display text-lg leading-none text-white uppercase">
+              <span className="absolute bottom-[6cqw] left-[6cqw] font-display text-[min(1.125rem,6.5cqw)] leading-none text-white uppercase">
                 <span className="slant">
                   Birthday
                   <br />
@@ -122,7 +134,7 @@ export default function DuelView({
       </div>
 
       {!revealed ? (
-        <div className="mt-6 space-y-2">
+        <div className="mt-4 space-y-1">
           <LimeButton onClick={onReveal}>せーので公開</LimeButton>
           <button type="button" onClick={onReselect} className="min-h-11 w-full text-sm font-bold text-ink-soft underline">
             選び直す

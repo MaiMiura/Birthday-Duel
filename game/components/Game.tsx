@@ -272,6 +272,7 @@ export default function Game() {
     view = (
       <DuelView
         card={selection.card}
+        birthday={birthday}
         revealed={selection.revealed}
         onReveal={() => {
           const sel = { ...selection, revealed: true };
