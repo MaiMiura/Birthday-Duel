@@ -98,7 +98,6 @@ export default function DuelView({
                   {person.nameRoman && (
                     <p className="mt-1 text-[0.65rem] tracking-[0.45em] text-ink-soft uppercase">{person.nameRoman}</p>
                   )}
-                  <WhoIs card={card} />
                 </div>
                 <div className="pop-in border-t border-line px-5 pt-3 pb-4">
                   <div className="flex items-center justify-between">
@@ -114,6 +113,8 @@ export default function DuelView({
                     <span>{formatPeriod(card.period)}</span>
                   </div>
                 </div>
+                {/* 説明は長くなることがあるので、スコアが画面の下に隠れないようにスコアのあとに置く */}
+                <WhoIs card={card} />
               </>
             )}
           </section>
@@ -164,7 +165,7 @@ function WhoIs({ card }: { card: SelectedCard }) {
   const headline = person.description ?? (person.occupations.map((o) => o.label).join("、") || null);
   if (!headline && !summary) return null;
   return (
-    <div className="mt-3 space-y-1.5">
+    <div className="space-y-1.5 border-t border-line px-5 pt-3 pb-4">
       {/* 冒頭が取れたら冒頭だけ（肩書きと同じ内容が並ばないように）、取れなければ肩書き */}
       {!summary && <p className="text-sm font-black">{headline}</p>}
       {summary && (
