@@ -98,6 +98,7 @@ export default function DuelView({
                   {person.nameRoman && (
                     <p className="mt-1 text-[0.65rem] tracking-[0.45em] text-ink-soft uppercase">{person.nameRoman}</p>
                   )}
+                  <WhoIs card={card} />
                 </div>
                 <div className="pop-in border-t border-line px-5 pt-3 pb-4">
                   <div className="flex items-center justify-between">
@@ -154,5 +155,36 @@ export default function DuelView({
         </div>
       )}
     </main>
+  );
+}
+
+/** 何をした人か: 短い肩書き（なければ職業）と、Wikipedia の記事の冒頭 */
+function WhoIs({ card }: { card: SelectedCard }) {
+  const { person, summary } = card;
+  const headline = person.description ?? (person.occupations.map((o) => o.label).join("、") || null);
+  if (!headline && !summary) return null;
+  return (
+    <div className="mt-3 space-y-1.5">
+      {/* 冒頭が取れたら冒頭だけ（肩書きと同じ内容が並ばないように）、取れなければ肩書き */}
+      {!summary && <p className="text-sm font-black">{headline}</p>}
+      {summary && (
+        <>
+          <p className="text-sm leading-relaxed font-bold">{summary}</p>
+          {person.jaUrl && (
+            <p className="text-[0.65rem] text-ink-soft">
+              出典:{" "}
+              <a className="underline" href={person.jaUrl} target="_blank" rel="noreferrer">
+                Wikipedia「{person.jaTitle}」
+              </a>
+              （
+              <a className="underline" href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" target="_blank" rel="noreferrer">
+                CC BY-SA 4.0
+              </a>
+              ）
+            </p>
+          )}
+        </>
+      )}
+    </div>
   );
 }

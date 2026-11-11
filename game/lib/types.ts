@@ -102,4 +102,6 @@ export interface SelectedCard {
   fetchedAt: string;
   views: number;
   selectedAt: string;
+  /** 日本語版 Wikipedia の記事の冒頭（何をした人か）。取れなかったときやデモでは null */
+  summary?: string | null;
 }

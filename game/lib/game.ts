@@ -55,6 +55,8 @@ export interface FetchedScore {
   views: number;
   period: ScorePeriod;
   fetchedAt: string;
+  /** 記事の冒頭（何をした人か）。取れなければ null */
+  summary?: string | null;
 }
 
 export function selectCard(
@@ -78,6 +80,7 @@ export function selectCard(
     fetchedAt: fetched?.fetchedAt ?? hand.fetchedAt,
     views,
     selectedAt: now.toISOString(),
+    summary: fetched?.summary ?? null,
   };
 }
 

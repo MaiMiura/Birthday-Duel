@@ -5,6 +5,7 @@ import { classify, sensitiveReason, type AncestorMap } from "../lib/classify";
 import { getDemoHand } from "../lib/demo";
 import { approxViews, cardState, formatViews, nextCategory, selectCard, visiblePeople } from "../lib/game";
 import { formatPeriod, periodDays, periodMonths, scorePeriod } from "../lib/period";
+import { dropSubject, leadFromWikitext, shorten } from "../lib/server/summary";
 
 describe("誕生日", () => {
   it("2月29日を選べる", () => {
@@ -146,6 +147,7 @@ describe("選んだときにスコアを取るカード", () => {
     assert.equal(card.views, 777);
     assert.deepEqual(card.period, { start: "2025-11", end: "2026-10" });
     assert.equal(card.fetchedAt, "2026-11-01T00:00:00.000Z");
+    assert.equal(card.summary, null);
     assert.throws(() => selectCard(hand, person, person.categories[0], now));
   });
 });
@@ -160,5 +162,41 @@ describe("上位に絞った手札のカード", () => {
     const none = { ...hand.people[0], categories: [] };
     const state2 = cardState(none, "all");
     assert.equal(!state2.playable && state2.label, "部門なし");
+  });
+});
+
+describe("何をした人か（記事の冒頭）", () => {
+  it("勝負で選んだときに取った冒頭をカードに残す", () => {
+    const hand = getDemoHand(10, 29, new Date("2026-10-29T00:00:00Z"))!;
+    const person = { ...hand.people[0], score: { status: "pending" as const } };
+    const card = selectCard(hand, person, person.categories[0], new Date(), {
+      views: 1,
+      period: { start: "2025-11", end: "2026-10" },
+      fetchedAt: "2026-11-01T00:00:00.000Z",
+      summary: "日本の歌手。",
+    });
+    assert.equal(card.summary, "日本の歌手。");
+  });
+  it("wikitext から基礎情報・画像・脚注を除いて最初の段落を取る", () => {
+    const wikitext = [
+      "{{Infobox 人物|名前=星野 そら|画像=[[ファイル:a.jpg|thumb]]}}",
+      "[[ファイル:b.jpg|thumb|[[東京]]で]]",
+      "'''星野 そら'''（ほしの そら、[[1990年]] - ）は、[[日本]]の[[歌手]]<ref>出典</ref>。{{要出典}}",
+      "",
+      "== 来歴 ==",
+      "本文。",
+    ].join("\n");
+    assert.equal(leadFromWikitext(wikitext), "星野 そら（ほしの そら、1990年 - ）は、日本の歌手。");
+  });
+  it("「〇〇は、」を省く", () => {
+    assert.equal(dropSubject("星野 そら（ほしの そら、1990年 - ）は、日本の歌手。"), "日本の歌手。");
+    assert.equal(dropSubject("織田 信長 は、日本の武将。"), "日本の武将。");
+    assert.equal(dropSubject("日本の歌手。"), "日本の歌手。");
+    assert.equal(dropSubject("篠原 紗英（しのはら さえ、1994年 - ）は日本の歌手。"), "日本の歌手。");
+  });
+  it("長い冒頭は文の切れ目で短くする", () => {
+    const long = "あ".repeat(80) + "。" + "い".repeat(100) + "。";
+    assert.equal(shorten(long), "あ".repeat(80) + "。");
+    assert.equal(shorten("短い。"), "短い。");
   });
 });
